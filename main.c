@@ -21,6 +21,9 @@ struct Token {
   int len;        // トークンの長さ
 };
 
+// 入力文字列
+static char *current_input;
+
 // エラー報告とexit
 static void error(char *fmt, ...) {
   va_list ap;
@@ -30,15 +33,38 @@ static void error(char *fmt, ...) {
   exit(1);
 }
 
+// エラーの位置の報告とexit
+static void verror_at(char *loc, char *fmt, va_list ap) {
+  int pos = loc - current_input;
+  fprintf(stderr, "%s\n", current_input);
+  fprintf(stderr, "%*s", pos, "");
+  fprintf(stderr, "^ ");
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
+static void error_at(char *loc, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  verror_at(loc, fmt, ap);
+}
+
+static void error_tok(Token *tok, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  verror_at(tok->loc, fmt, ap);
+}
+
 // 現在のトークンがsかどうか
 static bool equal(Token *tok, char *s) {
   return memcmp(tok->loc, s, tok->len) == 0 && s[tok->len] == '\0';
 }
 
-// 現在のトークンがsなら次のトークンへ
+// 現在のトークンがsなら次のトークンを返す
 static Token *skip(Token *tok, char *s) {
   if (!equal(tok, s))
-    error("'%s'ではありません", s);
+    error_tok(tok, "'%s'ではありません", s);
 
   return tok->next;
 }
@@ -46,7 +72,7 @@ static Token *skip(Token *tok, char *s) {
 // 現在のトークンが数値ならその値を返す
 static int get_number(Token *tok) {
   if (tok->kind != TK_NUM)
-    error("数値ではありません");
+    error_tok(tok, "数値ではありません");
 
   return tok->val;
 }
@@ -60,8 +86,9 @@ static Token *new_token(TokenKind kind, char *start, char *end) {
   return tok;
 }
 
-// pをトークナイズしてトークン列を返す
-static Token *tokenize(char *p) {
+// current_inputをトークナイズしてトークン列を返す
+static Token *tokenize(void) {
+  char *p = current_input;
   Token head = {};
   Token *cur = &head;
 
@@ -88,7 +115,7 @@ static Token *tokenize(char *p) {
       continue;
     }
 
-    error("不正なトークンです");
+    error_at(p, "不正なトークンです");
   }
 
   cur = cur->next = new_token(TK_EOF, p, p);
@@ -99,7 +126,8 @@ int main(int argc, char **argv) {
   if (argc != 2)
     error("%s: 引数の個数が正しくありません\n", argv[0]);
 
-  Token *tok = tokenize(argv[1]);
+  current_input = argv[1];
+  Token *tok = tokenize();
 
   printf(".intel_syntax noprefix\n");
   printf("  .globl main\n");
