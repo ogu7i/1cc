@@ -4,7 +4,7 @@ assert() {
   input="$2"
 
   ./1cc "$input" > tmp.s || exit
-  gcc -static -o tmp tmp.s
+  gcc -o tmp tmp.s
   ./tmp
   actual="$?"
 

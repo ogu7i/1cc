@@ -1,4 +1,4 @@
-CFLAGS=-std=c11 -g -fno-common
+CFLAGS=-std=c11 -g -fno-common -static
 
 1cc: main.o
 	$(CC) -o 1cc main.o $(LDFLAGS)
