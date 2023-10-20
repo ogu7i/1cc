@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -109,7 +110,7 @@ static Token *tokenize(void) {
     }
 
     // 記号
-    if (*p == '+' || *p == '-') {
+    if (ispunct(*p)) {
       cur = cur->next = new_token(TK_PUNCT, p, p + 1);
       p++;
       continue;
@@ -122,36 +123,172 @@ static Token *tokenize(void) {
   return head.next;
 }
 
+typedef enum {
+  ND_ADD, // +
+  ND_SUB, // -
+  ND_MUL, // *
+  ND_DIV, // /
+  ND_NUM, // 整数
+} NodeKind;
+
+typedef struct Node Node;
+struct Node {
+  NodeKind kind; // ノードの種類
+  Node *lhs;     // 左側のノード
+  Node *rhs;     // 右側
+  int val;       // ノードがND_NUMのときに使う。数値。
+};
+
+// 新しいノードを作る。種類をセットするだけ。
+static Node *new_node(NodeKind kind) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = kind;
+  return node;
+}
+
+// 新しい2分木ノードを作る。
+static Node *new_binary(NodeKind kind, Node *lhs, Node *rhs) {
+  Node *node = new_node(kind);
+  node->lhs = lhs;
+  node->rhs = rhs;
+  return node;
+}
+
+// 新しい数値ノードを作る。
+static Node *new_num(int val) {
+  Node *node = new_node(ND_NUM);
+  node->val = val;
+  return node;
+}
+
+// 再帰下降構文解析によるパースのための関数群
+static Node *expr(Token **rest, Token *tok);
+static Node *mul(Token **rest, Token *tok);
+static Node *primary(Token **rest, Token *tok);
+
+// expr = mul ("+" mul | "-" mul)*
+static Node *expr(Token **rest, Token *tok) {
+  Node *node = mul(&tok, tok);
+
+  for (;;) {
+    if (equal(tok, "+")) {
+      node = new_binary(ND_ADD, node, mul(&tok, tok->next));
+      continue;
+    }
+
+    if (equal(tok, "-")) {
+      node = new_binary(ND_SUB, node, mul(&tok, tok->next));
+      continue;
+    }
+
+    *rest = tok;
+    return node;
+  }
+}
+
+// mul = primary ("*" primary | "/" primary)*
+static Node *mul(Token **rest, Token *tok) {
+  Node *node = primary(&tok, tok);
+
+  for (;;) {
+    if (equal(tok, "*")) {
+      node = new_binary(ND_MUL, node, primary(&tok, tok->next));
+      continue;
+    }
+
+    if (equal(tok, "/")) {
+      node = new_binary(ND_DIV, node, primary(&tok, tok->next));
+      continue;
+    }
+
+    *rest = tok;
+    return node;
+  }
+}
+
+// primary = "(" expr ")" | num
+static Node *primary(Token **rest, Token *tok) {
+  if (equal(tok, "(")) {
+    Node *node = expr(&tok, tok->next);
+    *rest = skip(tok, ")");
+    return node;
+  }
+
+  if (tok->kind == TK_NUM) {
+    Node *node = new_num(tok->val);
+    *rest = tok->next;
+    return node;
+  }
+
+  error_tok(tok, "式でないといけません");
+}
+
+// コード生成
+
+static int depth;
+
+static void push(void) {
+  printf("  push rax\n");
+  depth++;
+}
+
+static void pop(char *arg) {
+  printf("  pop %s\n", arg);
+  depth--;
+}
+
+static void gen_expr(Node *node) {
+  if (node->kind == ND_NUM) {
+    printf("  mov rax, %d\n", node->val);
+    return;
+  }
+
+  gen_expr(node->rhs);
+  push();
+  gen_expr(node->lhs);
+  pop("rdi");
+
+  switch (node->kind) {
+    case ND_ADD:
+      printf("  add rax, rdi\n");
+      return;
+    case ND_SUB:
+      printf("  sub rax, rdi\n");
+      return;
+    case ND_MUL:
+      printf("  imul rax, rdi\n");
+      return;
+    case ND_DIV:
+      printf("  cqo\n");
+      printf("  idiv rdi\n");
+      return;
+  }
+
+  error("不正な式です");
+}
+
 int main(int argc, char **argv) {
   if (argc != 2)
     error("%s: 引数の個数が正しくありません\n", argv[0]);
 
+  // トークナイズとパース
   current_input = argv[1];
   Token *tok = tokenize();
+  Node *node = expr(&tok, tok);
+
+  if (tok->kind != TK_EOF)
+    error_tok(tok, "余分なトークンがあります");
 
   printf(".intel_syntax noprefix\n");
   printf("  .globl main\n");
   printf("main:\n");
 
-  // 最初のトークンは数値
-  printf("  mov rax, %d\n", get_number(tok));
-  tok = tok->next;
-
-  // その後は "+ <数値>" か "- <数値>"が続く
-  while (tok->kind != TK_EOF) {
-    if (equal(tok, "+")) {
-      tok = tok->next;
-      printf("  add rax, %d\n", get_number(tok));
-      tok = tok->next;
-      continue;
-    }
-
-    tok = skip(tok, "-");
-    printf("  sub rax, %d\n", get_number(tok));
-    tok = tok->next;
-  }
-
+  // ASTをたどってアセンブリを生成
+  gen_expr(node);
   printf("  ret\n");
+
+  // pushとpopの数が合ってるかチェック
+  assert(depth == 0);
   return 0;
 }
 
