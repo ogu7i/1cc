@@ -79,7 +79,15 @@ static int read_punct(char *p) {
   return ispunct(*p) ? 1 : 0;
 }
 
-// current_inputをトークナイズしてトークン列を返す
+// キーワードもTK_IDENTになっているので
+// キーワードが見つかったらTK_KEYWORDにする
+static void convert_keywords(Token *tok) {
+  for (Token *t = tok; t->kind != TK_EOF; t = t->next)
+    if (equal(t, "return"))
+      t->kind = TK_KEYWORD;
+}
+
+// pをトークナイズしてトークン列を返す
 Token *tokenize(char *p) {
   current_input = p;
   Token head = {};
@@ -101,7 +109,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    // 識別子
+    // 識別子かキーワード
     if (is_ident1(*p)) {
       char *start = p;
       do {
@@ -124,6 +132,7 @@ Token *tokenize(char *p) {
   }
 
   cur = cur->next = new_token(TK_EOF, p, p);
+  convert_keywords(head.next);
   return head.next;
 }
 
