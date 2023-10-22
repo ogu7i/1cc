@@ -11,6 +11,7 @@
 //
 
 typedef enum {
+  TK_IDENT, // 識別子
   TK_PUNCT, // 記号
   TK_NUM,   // 数値
   TK_EOF,   // EOF
@@ -47,7 +48,9 @@ typedef enum {
   ND_NE,        // !=
   ND_LT,        // <
   ND_LE,        // <=
+  ND_ASSIGN,    // =
   ND_EXPR_STMT, // 式文
+  ND_VAR,       // 変数
   ND_NUM,       // 整数
 } NodeKind;
 
@@ -57,6 +60,7 @@ struct Node {
   Node *next;    // 次のノード
   Node *lhs;     // 左辺
   Node *rhs;     // 右辺
+  char name;     // ND_VARのとき使う。変数名。
   int val;       // ノードがND_NUMのときに使う。数値。
 };
 
