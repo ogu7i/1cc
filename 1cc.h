@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct Node Node;
+
 //
 // tokenize.c
 //
@@ -38,6 +40,22 @@ Token *tokenize(char *p);
 // parse.c
 //
 
+// ローカル変数
+typedef struct Obj Obj;
+struct Obj {
+  Obj *next;
+  char *name; // 変数名
+  int offset; // rbpからのオフセット
+};
+
+// 関数
+typedef struct Function Function;
+struct Function {
+  Node *body;     // 関数本体のASTノード
+  Obj *locals;    // ローカル変数
+  int stack_size; // 変数のために確保するスタックサイズ
+};
+
 typedef enum {
   ND_ADD,       // +
   ND_SUB,       // -
@@ -54,21 +72,20 @@ typedef enum {
   ND_NUM,       // 整数
 } NodeKind;
 
-typedef struct Node Node;
 struct Node {
   NodeKind kind; // ノードの種類
   Node *next;    // 次のノード
   Node *lhs;     // 左辺
   Node *rhs;     // 右辺
-  char name;     // ND_VARのとき使う。変数名。
+  Obj *var;      // ND_VARのとき使う。変数。
   int val;       // ノードがND_NUMのときに使う。数値。
 };
 
-Node *parse(Token *tok);
+Function *parse(Token *tok);
 
 //
 // codegen.c
 //
 
-void codegen(Node *node);
+void codegen(Function *prog);
 
