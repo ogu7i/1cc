@@ -38,23 +38,25 @@ Token *tokenize(char *p);
 //
 
 typedef enum {
-  ND_ADD, // +
-  ND_SUB, // -
-  ND_MUL, // *
-  ND_DIV, // /
-  ND_NEG, // 単項 -
-  ND_EQ,  // ==
-  ND_NE,  // !=
-  ND_LT,  // <
-  ND_LE,  // <=
-  ND_NUM, // 整数
+  ND_ADD,       // +
+  ND_SUB,       // -
+  ND_MUL,       // *
+  ND_DIV,       // /
+  ND_NEG,       // 単項 -
+  ND_EQ,        // ==
+  ND_NE,        // !=
+  ND_LT,        // <
+  ND_LE,        // <=
+  ND_EXPR_STMT, // 式文
+  ND_NUM,       // 整数
 } NodeKind;
 
 typedef struct Node Node;
 struct Node {
   NodeKind kind; // ノードの種類
-  Node *lhs;     // 左側のノード
-  Node *rhs;     // 右側
+  Node *next;    // 次のノード
+  Node *lhs;     // 左辺
+  Node *rhs;     // 右辺
   int val;       // ノードがND_NUMのときに使う。数値。
 };
 
