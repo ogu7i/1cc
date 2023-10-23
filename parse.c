@@ -72,7 +72,7 @@ static Obj *new_lvar(char *name) {
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
 //      | "for" "(" expr-stmt expr? ";" expr? ")" stmt
-//      | "{" compound-stmt "}"
+//      | "{" compound-stmt 
 //      | expr-stmt
 static Node *stmt(Token **rest, Token *tok) {
   if (equal(tok, "return")) {
