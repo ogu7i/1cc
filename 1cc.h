@@ -72,6 +72,7 @@ typedef enum {
   ND_RETURN,    // return
   ND_IF,        // if
   ND_WHILE,     // while
+  ND_FOR,       // for
   ND_BLOCK,     // { ... }
   ND_EXPR_STMT, // 式文
   ND_VAR,       // 変数
@@ -84,10 +85,14 @@ struct Node {
   Node *lhs;     // 左辺
   Node *rhs;     // 右辺
   
-  // if, while
+  // if, while, for(condのみ)
   Node *cond;    // 条件
   Node *then;    // 条件がtrueのとき実行
   Node *els;     // 条件がfalseのとき実行
+
+  // for
+  Node *init;    // forの初期化部
+  Node *inc;     // forの更新部
 
   Node *body;    // ブロック
 
