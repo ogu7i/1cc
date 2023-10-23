@@ -104,6 +104,10 @@ static void gen_stmt(Node *node) {
     case ND_EXPR_STMT:
       gen_expr(node->lhs);
       return;
+    case ND_BLOCK:
+      for (Node *n = node->body; n; n = n->next)
+        gen_stmt(n);
+      return;
   }
 
   error("不正な文です");
@@ -131,10 +135,8 @@ void codegen(Function *prog) {
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %d\n", prog->stack_size);
 
-  for (Node *n = prog->body; n; n = n->next) {
-    gen_stmt(n);
-    assert(depth == 0);
-  }
+  gen_stmt(prog->body);
+  assert(depth == 0);
 
   // エピローグ
   printf(".L.return:\n");
