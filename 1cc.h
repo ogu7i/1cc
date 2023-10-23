@@ -70,6 +70,7 @@ typedef enum {
   ND_LE,        // <=
   ND_ASSIGN,    // =
   ND_RETURN,    // return
+  ND_IF,        // if
   ND_BLOCK,     // { ... }
   ND_EXPR_STMT, // 式文
   ND_VAR,       // 変数
@@ -82,6 +83,11 @@ struct Node {
   Node *lhs;     // 左辺
   Node *rhs;     // 右辺
   
+  // if文
+  Node *cond;    // 条件
+  Node *then;    // 条件がtrueのとき実行
+  Node *els;     // 条件がfalseのとき実行
+
   Node *body;    // ブロック
 
   Obj *var;      // ND_VARのとき使う。変数。
