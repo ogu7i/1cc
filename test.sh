@@ -63,6 +63,7 @@ assert 3 '{ 1; 2; return 3; }'
 
 # ブロック
 assert 3 '{ {1; {2;} return 3;} }'
+assert 5 '{ ;;; return 5; }'
 
 echo OK
 
