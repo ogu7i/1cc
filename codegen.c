@@ -32,7 +32,7 @@ static void gen_addr(Node *node) {
     return;
   }
 
-  error("左辺値ではありません");
+  error_tok(node->tok, "左辺値ではありません");
 }
 
 static void gen_expr(Node *node) {
@@ -98,7 +98,7 @@ static void gen_expr(Node *node) {
       return;
   }
 
-  error("不正な式です");
+  error_tok(node->tok, "不正な式です");
 }
 
 static void gen_stmt(Node *node) {
@@ -166,7 +166,7 @@ static void gen_stmt(Node *node) {
     }
   }
 
-  error("不正な文です");
+  error_tok(node->tok, "不正な文です");
 }
 
 static void assign_lvar_offsets(Function *prog) {
