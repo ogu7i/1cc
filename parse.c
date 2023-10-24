@@ -230,6 +230,54 @@ static Node *relational(Token **rest, Token *tok) {
   }
 }
 
+static Node *new_add(Node *lhs, Node *rhs, Token *tok) {
+  add_type(lhs);
+  add_type(rhs);
+
+  // num + num
+  if (is_integer(lhs->ty) && is_integer(rhs->ty))
+    return new_binary(ND_ADD, lhs, rhs, tok);
+
+  // ptr + ptr
+  if (lhs->ty->base && rhs->ty->base)
+    error_tok(tok, "ポインタ同士の加算はできません");
+
+  // num + ptr (ptr + numに変換しておく)
+  if (is_integer(lhs->ty) && rhs->ty->base) {
+    Node *tmp = lhs;
+    lhs = rhs;
+    rhs = tmp;
+  }
+
+  // ptr + num
+  rhs = new_binary(ND_MUL, rhs, new_num(8, tok), tok);
+  return new_binary(ND_ADD, lhs, rhs, tok);
+}
+
+static Node *new_sub(Node *lhs, Node *rhs, Token *tok) {
+  add_type(lhs);
+  add_type(rhs);
+
+  // num - num
+  if (is_integer(lhs->ty) && is_integer(rhs->ty))
+    return new_binary(ND_SUB, lhs, rhs, tok);
+
+  // ptr - num
+  if (lhs->ty->base && is_integer(rhs->ty)) {
+    rhs = new_binary(ND_MUL, rhs, new_num(8, tok), tok);
+    return new_binary(ND_SUB, lhs, rhs, tok);
+  }
+
+  // ptr - ptr 要素数
+  if (lhs->ty->base && rhs->ty->base) {
+    Node *node = new_binary(ND_SUB, lhs, rhs, tok);
+    node->ty = ty_int;
+    return new_binary(ND_DIV, node, new_num(8, tok), tok);
+  }
+
+  error_tok(tok, "不正なオペランドです");
+}
+
 // add = mul ("+" mul | "-" mul)*
 static Node *add(Token **rest, Token *tok) {
   Node *node = mul(&tok, tok);
@@ -238,12 +286,12 @@ static Node *add(Token **rest, Token *tok) {
     Token *start = tok;
 
     if (equal(tok, "+")) {
-      node = new_binary(ND_ADD, node, mul(&tok, tok->next), start);
+      node = new_add(node, mul(&tok, tok->next), start);
       continue;
     }
 
     if (equal(tok, "-")) {
-      node = new_binary(ND_SUB, node, mul(&tok, tok->next), start);
+      node = new_sub(node, mul(&tok, tok->next), start);
       continue;
     }
 
