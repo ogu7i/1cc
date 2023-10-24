@@ -8,6 +8,8 @@ static int count(void) {
   return i++;
 }
 
+static void gen_expr(Node *node);
+
 static void push(void) {
   printf("  push rax\n");
   depth++;
@@ -32,6 +34,11 @@ static void gen_addr(Node *node) {
     return;
   }
 
+  if (node->kind == ND_DEREF) {
+    gen_expr(node->lhs);
+    return;
+  }
+
   error_tok(node->tok, "左辺値ではありません");
 }
 
@@ -43,6 +50,13 @@ static void gen_expr(Node *node) {
     case ND_NEG:
       gen_expr(node->lhs);
       printf("  neg rax\n");
+      return;
+    case ND_ADDR:
+      gen_addr(node->lhs);
+      return;
+    case ND_DEREF:
+      gen_expr(node->lhs);
+      printf("  mov rax, [rax]\n");
       return;
     case ND_VAR:
       gen_addr(node);
