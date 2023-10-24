@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct Type Type;
 typedef struct Node Node;
 
 //
@@ -84,6 +85,7 @@ typedef enum {
 struct Node {
   NodeKind kind; // ノードの種類
   Node *next;    // 次のノード
+  Type *ty;      // 型(int, int *)
   Token *tok;    // エラー報告用。代表的なトークン。
   Node *lhs;     // 左辺
   Node *rhs;     // 右辺
@@ -110,4 +112,23 @@ Function *parse(Token *tok);
 //
 
 void codegen(Function *prog);
+
+//
+// type.c
+//
+
+typedef enum {
+  TY_INT, // int
+  TY_PTR, // pointer
+} TypeKind;
+
+struct Type {
+  TypeKind kind; // 型の種類(int, ...)
+  Type *base;    // ポインタの場合、指してるType
+};
+
+extern Type *ty_int;
+
+bool is_integer(Type *ty);
+void add_type(Node *node);
 

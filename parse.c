@@ -138,8 +138,10 @@ static Node *compound_stmt(Token **rest, Token *tok) {
 
   Node head = {};
   Node *cur = &head;
-  while (!equal(tok, "}"))
+  while (!equal(tok, "}")) {
     cur = cur->next = stmt(&tok, tok);
+    add_type(cur);
+  }
 
   node->body = head.next;
   *rest = tok->next;
