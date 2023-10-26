@@ -1,6 +1,9 @@
 #include "1cc.h"
 
+// 使ってるスタックの深さ。pushとpopの数が合ってるか確認用。
 static int depth;
+// 関数呼び出し時に引数をセットするレジスタ群 
+static char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 // ラベル用カウンタ
 static int count(void) {
@@ -69,9 +72,21 @@ static void gen_expr(Node *node) {
       pop("rdi");
       printf("  mov [rdi], rax\n");
       return;
-    case ND_FUNCALL:
+    case ND_FUNCALL: {
+      int nargs = 0;
+      for (Node *arg = node->args; arg; arg = arg->next) {
+        gen_expr(arg);
+        push();
+        nargs++;
+      }
+
+      for (int i = nargs - 1; i >= 0; i--)
+        pop(argreg[i]);
+
+      printf("  mov rax, 0\n");
       printf("  call %s\n", node->funcname);
       return;
+    }
   }
 
   gen_expr(node->rhs);

@@ -401,7 +401,29 @@ static Node *unary(Token **rest, Token *tok) {
   return primary(rest, tok);
 }
 
-// primary = "(" expr ")" | ident ("(" ")")? | num
+// funcall = ident "(" (expr ("," expr)*)? ")"
+static Node *funcall(Token **rest, Token *tok) {
+  Node *node = new_node(ND_FUNCALL, tok);
+  node->funcname = get_ident(tok);
+
+  tok = tok->next->next;
+
+  Node head = {};
+  Node *cur = &head;
+
+  while (!equal(tok, ")")) {
+    if (cur != &head)
+      tok = skip(tok, ",");
+
+    cur = cur->next = expr(&tok, tok);
+  }
+
+  *rest = skip(tok, ")");
+  node->args = head.next;
+  return node;
+}
+
+// primary = "(" expr ")" | funcall | ident | num 
 static Node *primary(Token **rest, Token *tok) {
   if (equal(tok, "(")) {
     Node *node = expr(&tok, tok->next);
@@ -411,12 +433,8 @@ static Node *primary(Token **rest, Token *tok) {
 
   if (tok->kind == TK_IDENT) {
     // 関数呼び出し
-    if (equal(tok->next, "(")) {
-      Node *node = new_node(ND_FUNCALL, tok);
-      node->funcname = get_ident(tok);
-      *rest = skip(tok->next->next, ")");
-      return node;
-    }
+    if (equal(tok->next, "("))
+      return funcall(rest, tok);
 
     // 変数
     Obj *var = find_var(tok);

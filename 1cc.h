@@ -104,7 +104,9 @@ struct Node {
 
   Node *body;     // ブロック
 
+  // 関数
   char *funcname; // 関数名
+  Node *args;     // 実引数
 
   Obj *var;       // ND_VARのとき使う。変数。
   int val;        // ノードがND_NUMのときに使う。数値。
