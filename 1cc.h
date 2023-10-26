@@ -79,32 +79,35 @@ typedef enum {
   ND_WHILE,     // while
   ND_FOR,       // for
   ND_BLOCK,     // { ... }
+  ND_FUNCALL,   // 関数呼び出し
   ND_EXPR_STMT, // 式文
   ND_VAR,       // 変数
   ND_NUM,       // 整数
 } NodeKind;
 
 struct Node {
-  NodeKind kind; // ノードの種類
-  Node *next;    // 次のノード
-  Type *ty;      // 型(int, int *)
-  Token *tok;    // エラー報告用。代表的なトークン。
-  Node *lhs;     // 左辺
-  Node *rhs;     // 右辺
+  NodeKind kind;  // ノードの種類
+  Node *next;     // 次のノード
+  Type *ty;       // 型(int, int *)
+  Token *tok;     // エラー報告用。代表的なトークン。
+  Node *lhs;      // 左辺
+  Node *rhs;      // 右辺
   
   // if, while, for(condのみ)
-  Node *cond;    // 条件
-  Node *then;    // 条件がtrueのとき実行
-  Node *els;     // 条件がfalseのとき実行
+  Node *cond;     // 条件
+  Node *then;     // 条件がtrueのとき実行
+  Node *els;      // 条件がfalseのとき実行
 
   // for
-  Node *init;    // forの初期化部
-  Node *inc;     // forの更新部
+  Node *init;     // forの初期化部
+  Node *inc;      // forの更新部
 
-  Node *body;    // ブロック
+  Node *body;     // ブロック
 
-  Obj *var;      // ND_VARのとき使う。変数。
-  int val;       // ノードがND_NUMのときに使う。数値。
+  char *funcname; // 関数名
+
+  Obj *var;       // ND_VARのとき使う。変数。
+  int val;        // ノードがND_NUMのときに使う。数値。
 };
 
 Function *parse(Token *tok);

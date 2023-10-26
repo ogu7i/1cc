@@ -1,10 +1,16 @@
 #!/bin/bash
+
+cat <<EOF | gcc -xc -c -o tmp2.o -
+int ret3() { return 3; }
+int ret5() { return 5; }
+EOF
+
 assert() {
   expected="$1"
   input="$2"
 
   ./1cc "$input" > tmp.s || exit
-  gcc -o tmp tmp.s
+  gcc -o tmp tmp.s tmp2.o
   ./tmp
   actual="$?"
 
@@ -98,6 +104,10 @@ assert 2 '{ int x=1; int y=3; int z=5; return &z - &x; }'
 
 assert 8 '{ int x, y; x=3; y=5; return x+y; }'
 assert 8 '{ int x=3, y=5; return x+y; }'
+
+# 関数呼び出し
+assert 3 '{ return ret3(); }'
+assert 5 '{ return ret5(); }'
 
 echo OK
 

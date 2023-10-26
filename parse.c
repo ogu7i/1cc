@@ -401,7 +401,7 @@ static Node *unary(Token **rest, Token *tok) {
   return primary(rest, tok);
 }
 
-// primary = "(" expr ")" | ident | num
+// primary = "(" expr ")" | ident ("(" ")")? | num
 static Node *primary(Token **rest, Token *tok) {
   if (equal(tok, "(")) {
     Node *node = expr(&tok, tok->next);
@@ -410,6 +410,15 @@ static Node *primary(Token **rest, Token *tok) {
   }
 
   if (tok->kind == TK_IDENT) {
+    // 関数呼び出し
+    if (equal(tok->next, "(")) {
+      Node *node = new_node(ND_FUNCALL, tok);
+      node->funcname = get_ident(tok);
+      *rest = skip(tok->next->next, ")");
+      return node;
+    }
+
+    // 変数
     Obj *var = find_var(tok);
     if (!var)
       error_tok(tok, "未定義の変数です");
