@@ -1,9 +1,11 @@
 #include "1cc.h"
 
-// 使ってるスタックの深さ。pushとpopの数が合ってるか確認用。
+// 使ってるスタックの深さ。push/popごとに増減
 static int depth;
 // 関数呼び出し時に引数をセットするレジスタ群 
 static char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+// 現在処理している関数
+static Function *current_fn;
 
 // ラベル用カウンタ
 static int count(void) {
@@ -84,7 +86,15 @@ static void gen_expr(Node *node) {
         pop(argreg[i]);
 
       printf("  mov rax, 0\n");
-      printf("  call %s\n", node->funcname);
+
+      if (depth % 2 == 0) {
+        printf("  call %s\n", node->funcname);
+      } else {
+        printf("  sub rsp, 8\n");
+        printf("  call %s\n", node->funcname);
+        printf("  add rsp, 8\n");
+      }
+
       return;
     }
   }
@@ -137,7 +147,7 @@ static void gen_stmt(Node *node) {
   switch (node->kind) {
     case ND_RETURN:
       gen_expr(node->lhs);
-      printf("  jmp .L.return\n");
+      printf("  jmp .L.return.%s\n", current_fn->name);
       return;
     case ND_EXPR_STMT:
       gen_expr(node->lhs);
@@ -201,35 +211,38 @@ static void gen_stmt(Node *node) {
   error_tok(node->tok, "不正な文です");
 }
 
-static void assign_lvar_offsets(Function *prog) {
+static void assign_lvar_offsets(Function *fn) {
   int offset = 0;
-  for (Obj *var = prog->locals; var; var = var->next) {
+  for (Obj *var = fn->locals; var; var = var->next) {
     offset += 8;
     var->offset = offset;
   }
 
-  prog->stack_size = align_to(offset, 16);
+  fn->stack_size = align_to(offset, 16);
 }
 
 void codegen(Function *prog) {
-  assign_lvar_offsets(prog);
-
   printf(".intel_syntax noprefix\n");
-  printf("  .globl main\n");
-  printf("main:\n");
 
-  // プロローグ
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", prog->stack_size);
+  for (Function *fn = prog; fn; fn = fn->next) {
+    current_fn = fn;
+    assign_lvar_offsets(fn);
+    printf("  .globl %s\n", fn->name);
+    printf("%s:\n", fn->name);
 
-  gen_stmt(prog->body);
-  assert(depth == 0);
+    // プロローグ
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    printf("  sub rsp, %d\n", fn->stack_size);
 
-  // エピローグ
-  printf(".L.return:\n");
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  printf("  ret\n");
+    gen_stmt(fn->body);
+    assert(depth == 0);
+
+    // エピローグ
+    printf(".L.return.%s:\n", fn->name);
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
+  }
 }
 

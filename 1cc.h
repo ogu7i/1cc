@@ -56,6 +56,8 @@ struct Obj {
 // 関数
 typedef struct Function Function;
 struct Function {
+  Function *next; // 次の関数
+  char *name;     // 関数名
   Node *body;     // 関数本体のASTノード
   Obj *locals;    // ローカル変数
   int stack_size; // 変数のために確保するスタックサイズ
@@ -125,19 +127,22 @@ void codegen(Function *prog);
 //
 
 typedef enum {
-  TY_INT, // int
-  TY_PTR, // pointer
+  TY_INT,  // int
+  TY_PTR,  // pointer
+  TY_FUNC, // 関数
 } TypeKind;
 
 struct Type {
-  TypeKind kind; // 型の種類(int, ...)
-  Type *base;    // ポインタの場合、指してるType
-  Token *name;   // 宣言子の識別子
+  TypeKind kind;   // 型の種類(int, ...)
+  Type *base;      // ポインタの場合、指してるType
+  Token *name;     // 宣言子の識別子
+  Type *return_ty; // 関数の返り値の型
 };
 
 extern Type *ty_int;
 
 bool is_integer(Type *ty);
 Type *pointer_to(Type *base);
+Type *func_type(Type *return_ty);
 void add_type(Node *node);
 

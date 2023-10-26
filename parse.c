@@ -4,6 +4,9 @@
 Obj *locals;
 
 static Node *stmt(Token **rest, Token *tok);
+static Type *declspec(Token **rest, Token *tok);
+static Type *type_suffix(Token **rest, Token *tok, Type *ty);
+static Type *declarator(Token **rest, Token *tok, Type *ty);
 static Node *declaration(Token **rest, Token *tok);
 static Node *compound_stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
@@ -147,7 +150,18 @@ static Type *declspec(Token **rest, Token *tok) {
   return ty_int;
 }
 
-// declarator = "*"* ident
+// type-suffix = ("(" ")")?
+static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
+  if (equal(tok, "(")) {
+    *rest = skip(tok->next, ")");
+    return func_type(ty);
+  }
+
+  *rest = tok;
+  return ty;
+}
+
+// declarator = "*"* ident type-suffix
 static Type *declarator(Token **rest, Token *tok, Type *ty) {
   while (consume(&tok, tok, "*"))
     ty = pointer_to(ty);
@@ -155,8 +169,8 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
   if (tok->kind != TK_IDENT)
     error_tok(tok, "変数名ではありません");
 
+  ty = type_suffix(rest, tok->next, ty);
   ty->name = tok;
-  *rest = tok->next;
   return ty;
 }
 
@@ -454,13 +468,30 @@ static Node *primary(Token **rest, Token *tok) {
   error_tok(tok, "式でないといけません");
 }
 
-// program = "{" compound-stmt
-Function *parse(Token *tok) {
-  tok = skip(tok, "{");
+// function-definition = declspec declarator "{" compound-stmt
+static Function *function_definition(Token **rest, Token *tok) {
+  Type *ty = declspec(&tok, tok);
+  ty = declarator(&tok, tok, ty);
 
-  Function *prog = calloc(1, sizeof(Function));
-  prog->body = compound_stmt(&tok, tok);
-  prog->locals = locals;
-  return prog;
+  locals = NULL;
+
+  Function *fn = calloc(1, sizeof(Function));
+  fn->name = get_ident(ty->name);
+
+  tok = skip(tok, "{");
+  fn->body = compound_stmt(rest, tok);
+  fn->locals = locals;
+  return fn;
+}
+
+// program = function-definition*
+Function *parse(Token *tok) {
+  Function head = {};
+  Function *cur = &head;
+
+  while (tok->kind != TK_EOF)
+    cur = cur->next = function_definition(&tok, tok);
+
+  return head.next;
 }
 
