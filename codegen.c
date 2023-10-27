@@ -235,6 +235,11 @@ void codegen(Function *prog) {
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", fn->stack_size);
 
+    // レジスタに置かれた引数をスタックにコピーしておく
+    int i = 0;
+    for (Obj *var = fn->params; var; var = var->next)
+      printf("  mov [rbp-%d], %s\n", var->offset, argreg[i++]);
+
     gen_stmt(fn->body);
     assert(depth == 0);
 

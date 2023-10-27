@@ -58,6 +58,8 @@ typedef struct Function Function;
 struct Function {
   Function *next; // 次の関数
   char *name;     // 関数名
+  Obj *params;    // 仮引数のリスト
+
   Node *body;     // 関数本体のASTノード
   Obj *locals;    // ローカル変数
   int stack_size; // 変数のために確保するスタックサイズ
@@ -137,11 +139,14 @@ struct Type {
   Type *base;      // ポインタの場合、指してるType
   Token *name;     // 宣言子の識別子
   Type *return_ty; // 関数の返り値の型
+  Type *params;    // 仮引数
+  Type *next;
 };
 
 extern Type *ty_int;
 
 bool is_integer(Type *ty);
+Type *copy_type(Type *ty);
 Type *pointer_to(Type *base);
 Type *func_type(Type *return_ty);
 void add_type(Node *node);

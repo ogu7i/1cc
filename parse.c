@@ -150,12 +150,29 @@ static Type *declspec(Token **rest, Token *tok) {
   return ty_int;
 }
 
-// type-suffix = ("(" ")")?
-static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
-  if (equal(tok, "(")) {
-    *rest = skip(tok->next, ")");
-    return func_type(ty);
+// func-params = declspec declarator ("," declspec declarator)*
+static Type *func_params(Token **rest, Token *tok, Type *ty) {
+  Type head = {};
+  Type *cur = &head;
+  while (!equal(tok, ")")) {
+    if (cur != &head)
+      tok = skip(tok, ",");
+
+    Type *base_ty = declspec(&tok, tok);
+    Type *param_ty = declarator(&tok, tok, base_ty);
+    cur = cur->next = copy_type(param_ty);
   }
+
+  ty = func_type(ty);
+  ty->params = head.next;
+  *rest = tok->next;
+  return ty;
+}
+
+// type-suffix = ("(" func-params? ")")?
+static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
+  if (equal(tok, "("))
+    return func_params(rest, tok->next, ty);
 
   *rest = tok;
   return ty;
@@ -468,6 +485,14 @@ static Node *primary(Token **rest, Token *tok) {
   error_tok(tok, "式でないといけません");
 }
 
+// スタックに積む順番を揃えるため逆転
+static void create_param_lvars(Type *param) {
+  if (param) {
+    create_param_lvars(param->next);
+    new_lvar(get_ident(param->name), param);
+  }
+}
+
 // function-definition = declspec declarator "{" compound-stmt
 static Function *function_definition(Token **rest, Token *tok) {
   Type *ty = declspec(&tok, tok);
@@ -477,6 +502,9 @@ static Function *function_definition(Token **rest, Token *tok) {
 
   Function *fn = calloc(1, sizeof(Function));
   fn->name = get_ident(ty->name);
+
+  create_param_lvars(ty->params);
+  fn->params = locals;
 
   tok = skip(tok, "{");
   fn->body = compound_stmt(rest, tok);
