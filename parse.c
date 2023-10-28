@@ -17,6 +17,7 @@ static Node *relational(Token **rest, Token *tok);
 static Node *add(Token **rest, Token *tok);
 static Node *mul(Token **rest, Token *tok);
 static Node *unary(Token **rest, Token *tok);
+static Node *postfix(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
 
 // ローカル変数の検索
@@ -426,7 +427,7 @@ static Node *mul(Token **rest, Token *tok) {
 }
 
 // unary = ("+" | "-" | "*" | "&") unary 
-//       | primary
+//       | postfix
 static Node *unary(Token **rest, Token *tok) {
   if (equal(tok, "+"))
     return unary(rest, tok->next);
@@ -440,7 +441,7 @@ static Node *unary(Token **rest, Token *tok) {
   if (equal(tok, "&"))
     return new_unary(ND_ADDR, unary(rest, tok->next), tok);
 
-  return primary(rest, tok);
+  return postfix(rest, tok);
 }
 
 // funcall = ident "(" (expr ("," expr)*)? ")"
@@ -462,6 +463,21 @@ static Node *funcall(Token **rest, Token *tok) {
 
   *rest = skip(tok, ")");
   node->args = head.next;
+  return node;
+}
+
+// postfix = primary ("[" expr "]")*
+static Node *postfix(Token **rest, Token *tok) {
+  Node *node = primary(&tok, tok);
+
+  while (equal(tok, "[")) {
+    Token *start = tok;
+    Node *index = expr(&tok, tok->next);
+    tok = skip(tok, "]");
+    node = new_unary(ND_DEREF, new_add(node, index, start), start);
+  }
+
+  *rest = tok;
   return node;
 }
 
