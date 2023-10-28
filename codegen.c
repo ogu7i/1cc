@@ -61,7 +61,8 @@ static void gen_expr(Node *node) {
       return;
     case ND_DEREF:
       gen_expr(node->lhs);
-      printf("  mov rax, [rax]\n");
+      if (node->ty->kind != TY_ARRAY)
+        printf("  mov rax, [rax]\n");
       return;
     case ND_VAR:
       gen_addr(node);
