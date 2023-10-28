@@ -129,15 +129,22 @@ void codegen(Function *prog);
 //
 
 typedef enum {
-  TY_INT,  // int
-  TY_PTR,  // pointer
-  TY_FUNC, // 関数
+  TY_INT,   // int
+  TY_PTR,   // pointer
+  TY_FUNC,  // 関数
+  TY_ARRAY, // 配列
 } TypeKind;
 
 struct Type {
   TypeKind kind;   // 型の種類(int, ...)
-  Type *base;      // ポインタの場合、指してるType
+  int size;        // sizeofで返される値
+  Type *base;      // ポインタ(配列)の場合、指してるType
   Token *name;     // 宣言子の識別子
+
+  // 配列
+  int array_len;
+
+  // 関数
   Type *return_ty; // 関数の返り値の型
   Type *params;    // 仮引数
   Type *next;
@@ -149,5 +156,6 @@ bool is_integer(Type *ty);
 Type *copy_type(Type *ty);
 Type *pointer_to(Type *base);
 Type *func_type(Type *return_ty);
+Type *array_of(Type *base, int len);
 void add_type(Node *node);
 

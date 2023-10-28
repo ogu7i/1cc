@@ -65,7 +65,8 @@ static void gen_expr(Node *node) {
       return;
     case ND_VAR:
       gen_addr(node);
-      printf("  mov rax, [rax]\n");
+      if (node->ty->kind != TY_ARRAY)
+        printf("  mov rax, [rax]\n");
       return;
     case ND_ASSIGN:
       gen_addr(node->lhs);
@@ -214,7 +215,7 @@ static void gen_stmt(Node *node) {
 static void assign_lvar_offsets(Function *fn) {
   int offset = 0;
   for (Obj *var = fn->locals; var; var = var->next) {
-    offset += 8;
+    offset += var->ty->size;
     var->offset = offset;
   }
 
