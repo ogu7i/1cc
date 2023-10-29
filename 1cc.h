@@ -44,25 +44,25 @@ Token *tokenize(char *p);
 // parse.c
 //
 
-// ローカル変数
+// 変数 / 関数
 typedef struct Obj Obj;
 struct Obj {
   Obj *next;
-  char *name; // 変数名
-  Type *ty;   // 型
-  int offset; // rbpからのオフセット
-};
+  char *name;       // 変数名
+  Type *ty;         // 型
+  bool is_local;    // ローカルかグローバルか
 
-// 関数
-typedef struct Function Function;
-struct Function {
-  Function *next; // 次の関数
-  char *name;     // 関数名
-  Obj *params;    // 仮引数のリスト
+  // ローカル変数用
+  int offset;       // rbpからのオフセット
 
-  Node *body;     // 関数本体のASTノード
-  Obj *locals;    // ローカル変数
-  int stack_size; // 変数のために確保するスタックサイズ
+  // グローバル変数 / 関数用
+  bool is_function; // 関数かグローバル変数か
+
+  // 関数用
+  Obj *params;      // 関数の仮引数
+  Node *body;       // 関数のbodyのAST
+  Obj *locals;      // ローカル変数
+  int stack_size;   // 変数と引数のためのスタックサイズ
 };
 
 typedef enum {
@@ -116,13 +116,13 @@ struct Node {
   int val;        // ノードがND_NUMのときに使う。数値。
 };
 
-Function *parse(Token *tok);
+Obj *parse(Token *tok);
 
 //
 // codegen.c
 //
 
-void codegen(Function *prog);
+void codegen(Obj *prog);
 
 //
 // type.c

@@ -1,7 +1,8 @@
 #include "1cc.h"
 
 // パース中に作られたローカル変数はこのリストの中に
-Obj *locals;
+static Obj *locals;
+static Obj *globals;
 
 static Node *stmt(Token **rest, Token *tok);
 static Type *declspec(Token **rest, Token *tok);
@@ -66,12 +67,27 @@ static Node *new_var_node(Obj *var, Token *tok) {
   return node;
 }
 
-static Obj *new_lvar(char *name, Type *ty) {
+static Obj *new_var(char *name, Type *ty) {
   Obj *var = calloc(1, sizeof(Obj));
   var->name = name;
   var->ty = ty;
+  return var;
+}
+
+// ty型のローカル変数を作る
+static Obj *new_lvar(char *name, Type *ty) {
+  Obj *var = new_var(name, ty);
+  var->is_local = true;
   var->next = locals;
   locals = var;
+  return var;
+}
+
+// ty型のグローバル変数を作る
+static Obj *new_gvar(char *name, Type *ty) {
+  Obj *var = new_var(name, ty);
+  var->next = globals;
+  globals = var;
   return var;
 }
 
@@ -528,15 +544,14 @@ static void create_param_lvars(Type *param) {
 }
 
 // function-definition = declspec declarator "{" compound-stmt
-static Function *function_definition(Token **rest, Token *tok) {
+static Obj *function_definition(Token **rest, Token *tok) {
   Type *ty = declspec(&tok, tok);
   ty = declarator(&tok, tok, ty);
 
   locals = NULL;
 
-  Function *fn = calloc(1, sizeof(Function));
-  fn->name = get_ident(ty->name);
-
+  Obj *fn = new_gvar(get_ident(ty->name), ty);
+  fn->is_function = true;
   create_param_lvars(ty->params);
   fn->params = locals;
 
@@ -547,13 +562,12 @@ static Function *function_definition(Token **rest, Token *tok) {
 }
 
 // program = function-definition*
-Function *parse(Token *tok) {
-  Function head = {};
-  Function *cur = &head;
+Obj *parse(Token *tok) {
+  globals = NULL;
 
   while (tok->kind != TK_EOF)
-    cur = cur->next = function_definition(&tok, tok);
+    function_definition(&tok, tok);
 
-  return head.next;
+  return globals;
 }
 

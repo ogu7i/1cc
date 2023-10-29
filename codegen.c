@@ -5,7 +5,7 @@ static int depth;
 // 関数呼び出し時に引数をセットするレジスタ群 
 static char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 // 現在処理している関数
-static Function *current_fn;
+static Obj *current_fn;
 
 // ラベル用カウンタ
 static int count(void) {
@@ -213,7 +213,7 @@ static void gen_stmt(Node *node) {
   error_tok(node->tok, "不正な文です");
 }
 
-static void assign_lvar_offsets(Function *fn) {
+static void assign_lvar_offsets(Obj *fn) {
   int offset = 0;
   for (Obj *var = fn->locals; var; var = var->next) {
     offset += var->ty->size;
@@ -223,13 +223,18 @@ static void assign_lvar_offsets(Function *fn) {
   fn->stack_size = align_to(offset, 16);
 }
 
-void codegen(Function *prog) {
+void codegen(Obj *prog) {
   printf(".intel_syntax noprefix\n");
 
-  for (Function *fn = prog; fn; fn = fn->next) {
+  for (Obj *fn = prog; fn; fn = fn->next) {
+    if (!fn->is_function)
+      continue;
+
     current_fn = fn;
     assign_lvar_offsets(fn);
+
     printf("  .globl %s\n", fn->name);
+    printf("  .text\n");
     printf("%s:\n", fn->name);
 
     // プロローグ
