@@ -35,7 +35,11 @@ static int align_to(int n, int align) {
 // ノードがメモリ内になければエラー
 static void gen_addr(Node *node) {
   if (node->kind == ND_VAR) {
-    printf("  lea rax, [rbp-%d]\n", node->var->offset);
+    if (node->var->is_local)
+      printf("  lea rax, [rbp-%d]\n", node->var->offset);
+    else
+      printf("  lea rax, %s[rip]\n", node->var->name);
+
     return;
   }
 
@@ -225,6 +229,16 @@ static void assign_lvar_offsets(Obj *fn) {
 
 void codegen(Obj *prog) {
   printf(".intel_syntax noprefix\n");
+
+  for (Obj *var = prog; var; var = var->next) {
+    if (var->is_function)
+      continue;
+
+    printf("  .data\n");
+    printf("  .globl %s\n", var->name);
+    printf("%s:\n", var->name);
+    printf("  .zero %d\n", var->ty->size);
+  }
 
   for (Obj *fn = prog; fn; fn = fn->next) {
     if (!fn->is_function)

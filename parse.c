@@ -21,9 +21,13 @@ static Node *unary(Token **rest, Token *tok);
 static Node *postfix(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
 
-// ローカル変数の検索
+// 変数の検索
 static Obj *find_var(Token *tok) {
   for (Obj *var = locals; var; var = var->next)
+    if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
+      return var;
+
+  for (Obj *var = globals; var; var = var->next)
     if (strlen(var->name) == tok->len && !strncmp(tok->loc, var->name, tok->len))
       return var;
 
@@ -225,10 +229,11 @@ static Node *declaration(Token **rest, Token *tok) {
 
   Node head = {};
   Node *cur = &head;
-  int i = 0;
+  bool first = true;
   while (!equal(tok, ";")) {
-    if (i++ > 0)
+    if (!first)
       tok = skip(tok, ",");
+    first = false;
 
     Type *ty = declarator(&tok, tok, basety);
     Obj *var = new_lvar(get_ident(ty->name), ty);
@@ -561,12 +566,40 @@ static Obj *function_definition(Token **rest, Token *tok) {
   return fn;
 }
 
-// program = function-definition*
+// global-variable = declspec (declarator ("," declarator)*)? ";"
+static void global_variable(Token **rest, Token *tok) {
+  Type *base_ty = declspec(&tok, tok);
+
+  bool first = true;
+  while (!equal(tok, ";")) {
+    if (!first)
+      tok = skip(tok, ",");
+
+    first = false;
+    Type *ty = declarator(&tok, tok, base_ty);
+    new_gvar(get_ident(ty->name), ty);
+  }
+
+  *rest = skip(tok, ";");
+}
+
+static bool is_function(Token *tok) {
+  Type *ty = declspec(&tok, tok);
+  ty = declarator(&tok, tok, ty);
+
+  return ty->kind == TY_FUNC;
+}
+
+// program = (function-definition | global-variable)*
 Obj *parse(Token *tok) {
   globals = NULL;
 
-  while (tok->kind != TK_EOF)
-    function_definition(&tok, tok);
+  while (tok->kind != TK_EOF) {
+    if (is_function(tok))
+      function_definition(&tok, tok);
+    else
+      global_variable(&tok, tok);
+  }
 
   return globals;
 }
