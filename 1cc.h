@@ -129,6 +129,7 @@ void codegen(Obj *prog);
 //
 
 typedef enum {
+  TY_CHAR,  // char
   TY_INT,   // int
   TY_PTR,   // pointer
   TY_FUNC,  // 関数
@@ -150,6 +151,7 @@ struct Type {
   Type *next;
 };
 
+extern Type *ty_char;
 extern Type *ty_int;
 
 bool is_integer(Type *ty);

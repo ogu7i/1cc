@@ -165,8 +165,13 @@ static char *get_ident(Token *tok) {
   return strndup(tok->loc, tok->len);
 }
 
-// declspec = "int"
+// declspec = "char" | "int"
 static Type *declspec(Token **rest, Token *tok) {
+  if (equal(tok, "char")) {
+    *rest = tok->next;
+    return ty_char;
+  }
+
   *rest = skip(tok, "int");
   return ty_int;
 }
@@ -253,6 +258,10 @@ static Node *declaration(Token **rest, Token *tok) {
   return node;
 }
 
+static bool is_typename(Token *tok) {
+  return equal(tok, "char") || equal(tok, "int");
+}
+
 // compound-stmt = (declaration | stmt)* "}"
 static Node *compound_stmt(Token **rest, Token *tok) {
   Node *node = new_node(ND_BLOCK, tok);
@@ -260,7 +269,7 @@ static Node *compound_stmt(Token **rest, Token *tok) {
   Node head = {};
   Node *cur = &head;
   while (!equal(tok, "}")) {
-    if (equal(tok, "int"))
+    if (is_typename(tok))
       cur = cur->next = declaration(&tok, tok);
     else
       cur = cur->next = stmt(&tok, tok);

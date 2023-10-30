@@ -1,10 +1,11 @@
 #include "1cc.h"
 
+Type *ty_char = &(Type){ TY_CHAR, 1 };
 Type *ty_int = &(Type){ TY_INT, 8 };
 
-// int型ならtrue
+// 整数値を持つ型ならtrue
 bool is_integer(Type *ty) {
-  return ty->kind == TY_INT;
+  return ty->kind == TY_CHAR || ty->kind == TY_INT;
 }
 
 // tyのコピーを返す

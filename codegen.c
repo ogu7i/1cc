@@ -3,7 +3,8 @@
 // 使ってるスタックの深さ。push/popごとに増減
 static int depth;
 // 関数呼び出し時に引数をセットするレジスタ群 
-static char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+static char *argreg8[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+static char *argreg64[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 // 現在処理している関数
 static Obj *current_fn;
 
@@ -51,6 +52,25 @@ static void gen_addr(Node *node) {
   error_tok(node->tok, "左辺値ではありません");
 }
 
+static void load(Type *ty) {
+  if (ty->kind == TY_ARRAY)
+    return;
+
+  if (ty->size == 1)
+    printf("  movsbq rax, [rax]\n");
+  else
+    printf("  mov rax, [rax]\n");
+}
+
+static void store(Type *ty) {
+  pop("rdi");
+
+  if (ty->size == 1)
+    printf("  mov [rdi], al\n");
+  else
+    printf("  mov [rdi], rax\n");
+}
+
 static void gen_expr(Node *node) {
   switch (node->kind) {
     case ND_NUM:
@@ -65,20 +85,17 @@ static void gen_expr(Node *node) {
       return;
     case ND_DEREF:
       gen_expr(node->lhs);
-      if (node->ty->kind != TY_ARRAY)
-        printf("  mov rax, [rax]\n");
+      load(node->ty);
       return;
     case ND_VAR:
       gen_addr(node);
-      if (node->ty->kind != TY_ARRAY)
-        printf("  mov rax, [rax]\n");
+      load(node->ty);
       return;
     case ND_ASSIGN:
       gen_addr(node->lhs);
       push();
       gen_expr(node->rhs);
-      pop("rdi");
-      printf("  mov [rdi], rax\n");
+      store(node->ty);
       return;
     case ND_FUNCALL: {
       int nargs = 0;
@@ -89,7 +106,7 @@ static void gen_expr(Node *node) {
       }
 
       for (int i = nargs - 1; i >= 0; i--)
-        pop(argreg[i]);
+        pop(argreg64[i]);
 
       printf("  mov rax, 0\n");
 
@@ -258,8 +275,12 @@ void codegen(Obj *prog) {
 
     // レジスタに置かれた引数をスタックにコピーしておく
     int i = 0;
-    for (Obj *var = fn->params; var; var = var->next)
-      printf("  mov [rbp-%d], %s\n", var->offset, argreg[i++]);
+    for (Obj *var = fn->params; var; var = var->next) {
+      if (var->ty->size == 1)
+        printf("  mov [rbp-%d], %s\n", var->offset, argreg8[i++]);
+      else
+        printf("  mov [rbp-%d], %s\n", var->offset, argreg64[i++]);
+    }
 
     gen_stmt(fn->body);
     assert(depth == 0);
