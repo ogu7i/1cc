@@ -192,6 +192,8 @@ assert 10 'int main() { char x[10]; return sizeof(x); }'
 assert 1 'int main() { return sub_char(7, 3, 3); } int sub_char(char a, char b, char c) { return a-b-c; }'
 
 assert 1 'int main() { char x = 257; return x; }'
+assert 1 'int main() { return foo(257); } char foo(int x) { return x; }'
+assert 1 'int main() { return foo(257); } int foo(char x) { return x; }'
 
 echo OK
 
