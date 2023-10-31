@@ -244,6 +244,21 @@ static void assign_lvar_offsets(Obj *fn) {
   fn->stack_size = align_to(offset, 16);
 }
 
+// エスケープされた文字をそれに対応したASCIIコードで返す
+static int read_escaped(char *p) {
+  switch (*p) {
+    case 'a': return '\a';
+    case 'b': return '\b';
+    case 't': return '\t';
+    case 'n': return '\n';
+    case 'v': return '\v';
+    case 'f': return '\f';
+    case 'r': return '\r';
+    case 'e': return 27;
+    default: return *p;
+  }
+}
+
 void codegen(Obj *prog) {
   printf(".intel_syntax noprefix\n");
 
@@ -254,7 +269,22 @@ void codegen(Obj *prog) {
     printf("  .data\n");
     printf("  .globl %s\n", var->name);
     printf("%s:\n", var->name);
-    printf("  .zero %d\n", var->ty->size);
+
+    if (var->init_data) {
+      printf("  .string \"");
+
+      for (char *p = var->init_data; *p; p++) {
+        if (*p == '\\') {
+          printf("\\%03o", read_escaped(++p));
+          continue;
+        }
+
+        putchar(*p);
+      }
+      printf("\"\n");
+    } else {
+      printf("  .zero %d\n", var->ty->size);
+    }
   }
 
   for (Obj *fn = prog; fn; fn = fn->next) {

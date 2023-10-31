@@ -108,6 +108,18 @@ static void convert_keywords(Token *tok) {
       t->kind = TK_KEYWORD;
 }
 
+static Token *read_string_literal(char *start) {
+  char *p = start + 1;
+  for (; *p != '"'; p++)
+    if (*p == '\n' || *p == '\0')
+      error_at(start, "文字列リテラルが閉じていません");
+
+  Token *tok = new_token(TK_STR, start, p + 1);
+  tok->ty = array_of(ty_char, p - start);
+  tok->str = strndup(start + 1, p - start - 1);
+  return tok;
+}
+
 // pをトークナイズしてトークン列を返す
 Token *tokenize(char *p) {
   current_input = p;
@@ -118,6 +130,13 @@ Token *tokenize(char *p) {
     // 空白文字はスキップ
     if (isspace(*p)) {
       p++;
+      continue;
+    }
+
+    // 文字列リテラル
+    if (*p == '"') {
+      cur = cur->next = read_string_literal(p);
+      p += cur->len;
       continue;
     }
 

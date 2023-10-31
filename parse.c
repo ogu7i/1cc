@@ -95,6 +95,17 @@ static Obj *new_gvar(char *name, Type *ty) {
   return var;
 }
 
+// 新しい文字列リテラルを作る
+static Obj *new_string_literal(char *p, Type *ty) {
+  static int id = 0;
+  char *label = calloc(1, 20);
+  sprintf(label, ".LC%d", id++);
+  
+  Obj *var = new_gvar(label, ty);
+  var->init_data = p;
+  return var;
+}
+
 // stmt = "return" expr ";"
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
@@ -518,7 +529,7 @@ static Node *postfix(Token **rest, Token *tok) {
   return node;
 }
 
-// primary = "(" expr ")" | funcall | ident | num 
+// primary = "(" expr ")" | funcall | ident | num | str
 static Node *primary(Token **rest, Token *tok) {
   if (equal(tok, "(")) {
     Node *node = expr(&tok, tok->next);
@@ -544,6 +555,12 @@ static Node *primary(Token **rest, Token *tok) {
     Node *node = new_num(tok->val, tok);
     *rest = tok->next;
     return node;
+  }
+
+  if (tok->kind == TK_STR) {
+    Obj *var = new_string_literal(tok->str, tok->ty);
+    *rest = tok->next;
+    return new_var_node(var, tok);
   }
 
   error_tok(tok, "式でないといけません");
