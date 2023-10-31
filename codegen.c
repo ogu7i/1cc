@@ -259,9 +259,7 @@ static int read_escaped(char *p) {
   }
 }
 
-void codegen(Obj *prog) {
-  printf(".intel_syntax noprefix\n");
-
+static void emit_data(Obj *prog) {
   for (Obj *var = prog; var; var = var->next) {
     if (var->is_function)
       continue;
@@ -286,7 +284,9 @@ void codegen(Obj *prog) {
       printf("  .zero %d\n", var->ty->size);
     }
   }
+}
 
+static void emit_text(Obj *prog) {
   for (Obj *fn = prog; fn; fn = fn->next) {
     if (!fn->is_function)
       continue;
@@ -321,5 +321,12 @@ void codegen(Obj *prog) {
     printf("  pop rbp\n");
     printf("  ret\n");
   }
+
+}
+
+void codegen(Obj *prog) {
+  printf(".intel_syntax noprefix\n");
+  emit_data(prog);
+  emit_text(prog);
 }
 
