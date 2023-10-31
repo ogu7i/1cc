@@ -245,7 +245,21 @@ static void assign_lvar_offsets(Obj *fn) {
 }
 
 // エスケープされた文字をそれに対応したASCIIコードで返す
-static int read_escaped(char *p) {
+static int read_escaped(char **new_pos, char *p) {
+  if ('0' <= *p && *p <= '7') {
+    int c = *p++ - '0';
+    if ('0' <= *p && *p <= '7') {
+      c = c * 8 + *p++ - '0';
+      if ('0' <= *p && *p <= '7')
+        c = c * 8 + *p++ - '0';
+    }
+
+    *new_pos = p - 1;
+    return c;
+  }
+
+  *new_pos = p;
+
   switch (*p) {
     case 'a': return '\a';
     case 'b': return '\b';
@@ -269,17 +283,15 @@ static void emit_data(Obj *prog) {
     printf("%s:\n", var->name);
 
     if (var->init_data) {
-      printf("  .string \"");
-
       for (char *p = var->init_data; *p; p++) {
         if (*p == '\\') {
-          printf("\\%03o", read_escaped(++p));
+          printf("  .byte %d\n", read_escaped(&p, p + 1));
           continue;
         }
 
-        putchar(*p);
+        printf("  .byte %d\n", *p);
       }
-      printf("\"\n");
+      printf("  .byte 0\n");
     } else {
       printf("  .zero %d\n", var->ty->size);
     }
