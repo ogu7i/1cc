@@ -1,5 +1,9 @@
 #include "1cc.h"
 
+// 入力ファイル名
+static char *current_filename;
+
+// 入力文字列
 static char *current_input;
 
 // エラー報告とexit
@@ -13,8 +17,28 @@ void error(char *fmt, ...) {
 
 // エラーの位置の報告とexit
 static void verror_at(char *loc, char *fmt, va_list ap) {
-  int pos = loc - current_input;
-  fprintf(stderr, "%s\n", current_input);
+  char *line = loc;
+  // locが含まれている行頭を取得
+  while (current_input < line && line[-1] != '\n')
+    line--;
+
+  // locが含まれている行末を取得
+  char *end = loc;
+  while (*end != '\n')
+    end++;
+
+  // 行数を取得
+  int line_no = 1;
+  for (char *p = current_input; p < line; p++)
+    if (*p == '\n')
+      line_no++;
+
+  // 該当行を表示
+  int indent = fprintf(stderr, "%s:%d:", current_filename, line_no);
+  fprintf(stderr, "%.*s\n", (int)(end - line), line);
+
+  int pos = loc - line + indent;
+
   fprintf(stderr, "%*s", pos, "");
   fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
@@ -121,7 +145,7 @@ static Token *read_string_literal(char *start) {
 }
 
 // pをトークナイズしてトークン列を返す
-Token *tokenize(char *p) {
+static Token *tokenize(char *p) {
   current_input = p;
   Token head = {};
   Token *cur = &head;
@@ -174,5 +198,49 @@ Token *tokenize(char *p) {
   cur = cur->next = new_token(TK_EOF, p, p);
   convert_keywords(head.next);
   return head.next;
+}
+
+// 与えられたファイルの中身を返す
+static char *read_file(char *path) {
+  FILE *fp;
+
+  if (strcmp(path, "-") == 0) {
+    // ファイル名として"-"が与えられた場合は標準入力から読む
+    fp = stdin;
+  } else {
+    fp = fopen(path, "r");
+    if (!fp)
+      error("%sを開けませんでした: %s", path, strerror(errno));
+  }
+
+  char *buf;
+  size_t buflen;
+  FILE *out = open_memstream(&buf, &buflen);
+
+  // ファイル全体を読む
+  for (;;) {
+    char buf2[4096];
+    int n = fread(buf2, 1, sizeof(buf2), fp);
+    if (n == 0)
+      break;
+    fwrite(buf2, 1, n, out);
+  }
+
+  if (fp != stdin)
+    fclose(fp);
+
+  // 最終行は必ず'\n'で終わっているように
+  fflush(out);
+  if (buflen == 0 || buf[buflen - 1] != '\n')
+    fputc('\n', out);
+
+  fputc('\0', out);
+  fclose(out);
+  return buf;
+}
+
+Token *tokenize_file(char *path) {
+  current_filename = path;
+  return tokenize(read_file(path));
 }
 

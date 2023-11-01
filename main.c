@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
     error("%s: 引数の個数が正しくありません\n", argv[0]);
 
   // トークナイズとパース
-  Token *tok = tokenize(argv[1]);
+  Token *tok = tokenize_file(argv[1]);
   Obj *prog = parse(tok);
   codegen(prog);
 
