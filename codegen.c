@@ -244,8 +244,18 @@ static void assign_lvar_offsets(Obj *fn) {
   fn->stack_size = align_to(offset, 16);
 }
 
+static int hex_to_int(char c) {
+  if (isdigit(c))
+    return c - '0';
+  if ('a' <= c && c <= 'f')
+    return c - 'a' + 10;
+  
+  return c - 'A' + 10;
+}
+
 // エスケープされた文字をそれに対応したASCIIコードで返す
 static int read_escaped(char **new_pos, char *p) {
+  // 8進数
   if ('0' <= *p && *p <= '7') {
     int c = *p++ - '0';
     if ('0' <= *p && *p <= '7') {
@@ -253,6 +263,16 @@ static int read_escaped(char **new_pos, char *p) {
       if ('0' <= *p && *p <= '7')
         c = c * 8 + *p++ - '0';
     }
+
+    *new_pos = p - 1;
+    return c;
+  }
+
+  // 16進数
+  if (*p == 'x') {
+    int c = 0;
+    while (isxdigit(*(++p)))
+      c = c * 16 + hex_to_int(*p);
 
     *new_pos = p - 1;
     return c;
