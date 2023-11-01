@@ -15,6 +15,7 @@ static int count(void) {
 }
 
 static void gen_expr(Node *node);
+static void gen_stmt(Node *node);
 
 static void push(void) {
   printf("  push rax\n");
@@ -96,6 +97,10 @@ static void gen_expr(Node *node) {
       push();
       gen_expr(node->rhs);
       store(node->ty);
+      return;
+    case ND_STMT_EXPR:
+      for (Node *n = node->body; n; n = n->next)
+        gen_stmt(n);
       return;
     case ND_FUNCALL: {
       int nargs = 0;

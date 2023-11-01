@@ -529,8 +529,17 @@ static Node *postfix(Token **rest, Token *tok) {
   return node;
 }
 
-// primary = "(" expr ")" | funcall | ident | num | str
+// primary = "(" "{" stmt+ "}" ")"
+//         | "(" expr ")" | funcall | ident | num | str
 static Node *primary(Token **rest, Token *tok) {
+  // GNU statement expression
+  if (equal(tok, "(") && equal(tok->next, "{")) {
+    Node *node = new_node(ND_STMT_EXPR, tok);
+    node->body = compound_stmt(&tok, tok->next->next)->body;
+    *rest = skip(tok, ")");
+    return node;
+  }
+
   if (equal(tok, "(")) {
     Node *node = expr(&tok, tok->next);
     *rest = skip(tok, ")");
