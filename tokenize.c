@@ -151,6 +151,23 @@ static Token *tokenize(char *p) {
   Token *cur = &head;
 
   while (*p) {
+    // 行コメントはスキップ
+    if (startswith(p, "//")) {
+      p += 2;
+      while (*p != '\n')
+        p++;
+      continue;
+    }
+
+    // ブロックコメントはスキップ
+    if (startswith(p, "/*")) {
+      char *q = strstr(p + 2, "*/");
+      if (!q)
+        error_at(p, "ブロックコメントが閉じていません");
+      p = q + 2;
+      continue;
+    }
+
     // 空白文字はスキップ
     if (isspace(*p)) {
       p++;
