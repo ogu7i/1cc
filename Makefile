@@ -9,6 +9,7 @@ $(OBJS): 1cc.h
 
 test: 1cc
 	./test.sh
+	./test-driver.sh
 
 clean:
 	rm -f 1cc *.o *~ tmp*
