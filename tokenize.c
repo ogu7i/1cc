@@ -134,9 +134,12 @@ static void convert_keywords(Token *tok) {
 
 static Token *read_string_literal(char *start) {
   char *p = start + 1;
-  for (; *p != '"'; p++)
+  for (; *p != '"'; p++) {
     if (*p == '\n' || *p == '\0')
       error_at(start, "文字列リテラルが閉じていません");
+    if (*p == '\\')
+      p++;
+  }
 
   Token *tok = new_token(TK_STR, start, p + 1);
   tok->ty = array_of(ty_char, p - start);

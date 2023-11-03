@@ -3,3 +3,5 @@
 tmp*
 a.out
 1cc
+/test/*.exe
+/test/*.s
