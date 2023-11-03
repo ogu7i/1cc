@@ -36,6 +36,8 @@ struct Token {
   // TK_STR
   Type *ty;       // 型
   char *str;      // 文字列
+
+  int line_no;    // 行番号
 };
 
 void error(char *fmt, ...);
