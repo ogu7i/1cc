@@ -61,6 +61,12 @@ static void gen_addr(Node *node) {
     return;
   }
 
+  if (node->kind == ND_COMMA) {
+    gen_expr(node->lhs);
+    gen_addr(node->rhs);
+    return;
+  }
+
   error_tok(node->tok, "左辺値ではありません");
 }
 
@@ -110,6 +116,10 @@ static void gen_expr(Node *node) {
       push();
       gen_expr(node->rhs);
       store(node->ty);
+      return;
+    case ND_COMMA:
+      gen_expr(node->lhs);
+      gen_expr(node->rhs);
       return;
     case ND_STMT_EXPR:
       for (Node *n = node->body; n; n = n->next)

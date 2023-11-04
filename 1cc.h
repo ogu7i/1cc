@@ -89,6 +89,7 @@ typedef enum {
   ND_LT,        // <
   ND_LE,        // <=
   ND_ASSIGN,    // =
+  ND_COMMA,     // , コンマ演算子
   ND_RETURN,    // return
   ND_IF,        // if
   ND_WHILE,     // while

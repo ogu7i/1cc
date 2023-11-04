@@ -272,7 +272,7 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
   return ty;
 }
 
-// declaration = declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
+// declaration = declspec (declarator ("=" assign)? ("," declarator ("=" assign)?)*)? ";"
 static Node *declaration(Token **rest, Token *tok) {
   Type *basety = declspec(&tok, tok);
 
@@ -291,7 +291,7 @@ static Node *declaration(Token **rest, Token *tok) {
       continue;
 
     Node *lhs = new_var_node(var, ty->name);
-    Node *rhs = expr(&tok, tok->next);
+    Node *rhs = assign(&tok, tok->next);
     Node *node = new_binary(ND_ASSIGN, lhs, rhs, tok);
     cur = cur->next = new_unary(ND_EXPR_STMT, node, tok);
   }
@@ -343,9 +343,15 @@ static Node *expr_stmt(Token **rest, Token *tok) {
   return node;
 }
 
-// expr = assign
+// expr = assign ("," expr)?
 static Node *expr(Token **rest, Token *tok) {
-  return assign(rest, tok);
+  Node *node = assign(&tok, tok);
+
+  if (equal(tok, ","))
+    return new_binary(ND_COMMA, node, expr(rest, tok->next), tok);
+
+  *rest = tok;
+  return node;
 }
 
 // assign = equality ("=" assign)?
@@ -529,7 +535,7 @@ static Node *unary(Token **rest, Token *tok) {
   return postfix(rest, tok);
 }
 
-// funcall = ident "(" (expr ("," expr)*)? ")"
+// funcall = ident "(" (assign ("," assign)*)? ")"
 static Node *funcall(Token **rest, Token *tok) {
   Node *node = new_node(ND_FUNCALL, tok);
   node->funcname = get_ident(tok);
@@ -543,7 +549,7 @@ static Node *funcall(Token **rest, Token *tok) {
     if (cur != &head)
       tok = skip(tok, ",");
 
-    cur = cur->next = expr(&tok, tok);
+    cur = cur->next = assign(&tok, tok);
   }
 
   *rest = skip(tok, ")");
