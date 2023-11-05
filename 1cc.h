@@ -10,6 +10,7 @@
 
 typedef struct Type Type;
 typedef struct Node Node;
+typedef struct Member Member;
 
 //
 // tokenize.c
@@ -90,6 +91,7 @@ typedef enum {
   ND_LE,        // <=
   ND_ASSIGN,    // =
   ND_COMMA,     // , コンマ演算子
+  ND_MEMBER,    // . 構造体のメンバアクセス
   ND_RETURN,    // return
   ND_IF,        // if
   ND_WHILE,     // while
@@ -121,6 +123,9 @@ struct Node {
 
   Node *body;     // ブロックかstatement expression
 
+  // 構造体
+  Member *member; // 構造体のメンバ
+
   // 関数
   char *funcname; // 関数名
   Node *args;     // 実引数
@@ -142,11 +147,12 @@ void codegen(Obj *prog, FILE *out);
 //
 
 typedef enum {
-  TY_CHAR,  // char
-  TY_INT,   // int
-  TY_PTR,   // pointer
-  TY_FUNC,  // 関数
-  TY_ARRAY, // 配列
+  TY_CHAR,   // char
+  TY_INT,    // int
+  TY_PTR,    // pointer
+  TY_FUNC,   // 関数
+  TY_ARRAY,  // 配列
+  TY_STRUCT, // 構造体
 } TypeKind;
 
 struct Type {
@@ -158,10 +164,21 @@ struct Type {
   // 配列
   int array_len;
 
+  // 構造体
+  Member *members;
+
   // 関数
   Type *return_ty; // 関数の返り値の型
   Type *params;    // 仮引数
   Type *next;
+};
+
+// 構造体のメンバ
+struct Member {
+  Member *next;
+  Type *ty;
+  Token *name;
+  int offset;
 };
 
 extern Type *ty_char;

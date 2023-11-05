@@ -47,24 +47,25 @@ static int align_to(int n, int align) {
 // 与えられたノードの絶対アドレスを計算する
 // ノードがメモリ内になければエラー
 static void gen_addr(Node *node) {
-  if (node->kind == ND_VAR) {
-    if (node->var->is_local)
-      println("  lea rax, [rbp-%d]", node->var->offset);
-    else
-      println("  lea rax, %s[rip]", node->var->name);
+  switch (node->kind) {
+    case ND_VAR:
+      if (node->var->is_local)
+        println("  lea rax, [rbp-%d]", node->var->offset);
+      else
+        println("  lea rax, %s[rip]", node->var->name);
 
-    return;
-  }
-
-  if (node->kind == ND_DEREF) {
-    gen_expr(node->lhs);
-    return;
-  }
-
-  if (node->kind == ND_COMMA) {
-    gen_expr(node->lhs);
-    gen_addr(node->rhs);
-    return;
+      return;
+    case ND_DEREF:
+      gen_expr(node->lhs);
+      return;
+    case ND_COMMA:
+      gen_expr(node->lhs);
+      gen_addr(node->rhs);
+      return;
+    case ND_MEMBER:
+      gen_addr(node->lhs);
+      println("  add rax, %d", node->member->offset);
+      return;
   }
 
   error_tok(node->tok, "左辺値ではありません");
@@ -108,6 +109,7 @@ static void gen_expr(Node *node) {
       load(node->ty);
       return;
     case ND_VAR:
+    case ND_MEMBER:
       gen_addr(node);
       load(node->ty);
       return;
