@@ -141,6 +141,7 @@ Obj *parse(Token *tok);
 //
 
 void codegen(Obj *prog, FILE *out);
+int align_to(int n, int align);
 
 //
 // type.c
@@ -158,6 +159,8 @@ typedef enum {
 struct Type {
   TypeKind kind;   // 型の種類(int, ...)
   int size;        // sizeofで返される値
+  int align;
+
   Type *base;      // ポインタ(配列)の場合、指してるType
   Token *name;     // 宣言子の識別子
 

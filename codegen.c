@@ -40,7 +40,7 @@ static void pop(char *arg) {
 
 // nを`align`の最も近い倍数に丸める。
 // 例えば、align_to(5, 8)だと8に、align(11, 8)だと16になる。
-static int align_to(int n, int align) {
+int align_to(int n, int align) {
   return (n + align - 1) / align * align;
 }
 
