@@ -7,11 +7,20 @@ struct VarScope {
   Obj *var;
 };
 
+// 構造体のタグ名リスト
+typedef struct TagScope TagScope;
+struct TagScope {
+  TagScope *next;
+  char *name;
+  Type *ty;
+};
+
 // スコープのリスト
 typedef struct Scope Scope;
 struct Scope {
   Scope *next;
   VarScope *vars;
+  TagScope *tags;
 };
 
 // パース中に作られたローカル変数はこのリストの中に
@@ -56,6 +65,25 @@ static Obj *find_var(Token *tok) {
         return vs->var;
 
   return NULL;
+}
+
+// 構造体タグの検索
+static Type *find_tag(Token *tok) {
+  for (Scope *sc = scope; sc; sc = sc->next)
+    for (TagScope *ts = sc->tags; ts; ts = ts->next)
+      if (equal(tok, ts->name))
+        return ts->ty;
+
+  return NULL;
+}
+
+// 現在のスコープに新しいタグを追加する
+static void push_tag_scope(Token *tok, Type *ty) {
+  TagScope *sc = calloc(1, sizeof(TagScope));
+  sc->name = strndup(tok->loc, tok->len);
+  sc->ty = ty;
+  sc->next = scope->tags;
+  scope->tags = sc;
 }
 
 // 新しいノードを作る。種類をセットするだけ。
@@ -234,8 +262,23 @@ static void struct_members(Token **rest, Token *tok, Type *ty) {
   ty->members = head.next;
 }
 
-// struct-decl = "{" struct-members
+// struct-decl = ident | ident? "{" struct-members
 static Type *struct_decl(Token **rest, Token *tok) {
+  // タグを読んで保管しておく
+  Token *tag = NULL;
+  if (tok->kind == TK_IDENT) {
+    tag = tok;
+    tok = tok->next;
+  }
+
+  if (tag && !equal(tok, "{")) {
+    Type *ty = find_tag(tag);
+    if (!ty)
+      error_tok(tag, "不明な構造体型です");
+    *rest = tok;
+    return ty;
+  }
+
   tok = skip(tok, "{");
 
   Type *ty = calloc(1, sizeof(Type));
@@ -254,6 +297,10 @@ static Type *struct_decl(Token **rest, Token *tok) {
       ty->align = mem->ty->align;
   }
   ty->size = align_to(offset, ty->align);
+
+  // タグ名があれば構造体の型をスコープに追加しておく
+  if (tag)
+    push_tag_scope(tag, ty);
 
   return ty;
 }
