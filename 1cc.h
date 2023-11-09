@@ -154,6 +154,7 @@ typedef enum {
   TY_FUNC,   // 関数
   TY_ARRAY,  // 配列
   TY_STRUCT, // 構造体
+  TY_UNION,  // 共用体
 } TypeKind;
 
 struct Type {

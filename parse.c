@@ -7,7 +7,7 @@ struct VarScope {
   Obj *var;
 };
 
-// 構造体のタグ名リスト
+// 構造体/共用体のタグ名リスト
 typedef struct TagScope TagScope;
 struct TagScope {
   TagScope *next;
@@ -31,6 +31,7 @@ static Scope *scope = &(Scope){};
 
 static Node *stmt(Token **rest, Token *tok);
 static Type *struct_decl(Token **rest, Token *tok);
+static Type *union_decl(Token **rest, Token *tok);
 static Type *declspec(Token **rest, Token *tok);
 static Type *type_suffix(Token **rest, Token *tok, Type *ty);
 static Type *declarator(Token **rest, Token *tok, Type *ty);
@@ -262,8 +263,8 @@ static void struct_members(Token **rest, Token *tok, Type *ty) {
   ty->members = head.next;
 }
 
-// struct-decl = ident | ident? "{" struct-members
-static Type *struct_decl(Token **rest, Token *tok) {
+// struct-union-decl = ident? ("{" struct-members)?
+static Type *struct_union_decl(Token **rest, Token *tok) {
   // タグを読んで保管しておく
   Token *tag = NULL;
   if (tok->kind == TK_IDENT) {
@@ -286,6 +287,18 @@ static Type *struct_decl(Token **rest, Token *tok) {
   struct_members(rest, tok, ty);
   ty->align = 1;
 
+  // タグ名があれば構造体の型をスコープに追加しておく
+  if (tag)
+    push_tag_scope(tag, ty);
+
+  return ty;
+}
+
+// struct-decl = struct-union-decl
+static Type *struct_decl(Token **rest, Token *tok) {
+  Type *ty = struct_union_decl(rest, tok);
+  ty->kind = TY_STRUCT;
+
   // メンバのオフセットを割り当てる
   int offset = 0;
   for (Member *mem = ty->members; mem; mem = mem->next) {
@@ -298,10 +311,25 @@ static Type *struct_decl(Token **rest, Token *tok) {
   }
   ty->size = align_to(offset, ty->align);
 
-  // タグ名があれば構造体の型をスコープに追加しておく
-  if (tag)
-    push_tag_scope(tag, ty);
+  return ty;
+}
 
+// union-decl = struct-union-decl
+static Type *union_decl(Token **rest, Token *tok) {
+  Type *ty = struct_union_decl(rest, tok);
+  ty->kind = TY_UNION;
+
+  // 共用体の場合はオフセットの割当は不要
+  // 各メンバはcallocで0初期化されてるのでオフセットも0
+  // メンバ中の最大のアライメントとサイズを共用体のものとして
+  // セットしておけば良い
+  for (Member *mem = ty->members; mem; mem = mem->next) {
+    if (ty->align < mem->ty->align)
+      ty->align = mem->ty->align;
+    if (ty->size < mem->ty->size)
+      ty->size = mem->ty->size;
+  }
+  ty->size = align_to(ty->size, ty->align);
   return ty;
 }
 
@@ -315,15 +343,15 @@ static Member *get_struct_member(Type *ty, Token *tok) {
 
 static Node *struct_ref(Node *lhs, Token *tok) {
   add_type(lhs);
-  if (lhs->ty->kind != TY_STRUCT)
-    error_tok(lhs->tok, "構造体ではありません");
+  if (lhs->ty->kind != TY_STRUCT && lhs->ty->kind != TY_UNION)
+    error_tok(lhs->tok, "構造体でも共用体でもありません");
 
   Node *node = new_unary(ND_MEMBER, lhs, tok);
   node->member = get_struct_member(lhs->ty, tok);
   return node;
 }
 
-// declspec = "char" | "int" | "struct" struct-decl
+// declspec = "char" | "int" | "struct" struct-decl | "union" union-decl
 static Type *declspec(Token **rest, Token *tok) {
   if (equal(tok, "char")) {
     *rest = tok->next;
@@ -337,6 +365,9 @@ static Type *declspec(Token **rest, Token *tok) {
 
   if (equal(tok, "struct"))
     return struct_decl(rest, tok->next);
+
+  if (equal(tok, "union"))
+    return union_decl(rest, tok->next);
 
   error_tok(tok, "型名ではありません");
 }
@@ -424,7 +455,7 @@ static Node *declaration(Token **rest, Token *tok) {
 }
 
 static bool is_typename(Token *tok) {
-  return equal(tok, "char") || equal(tok, "int") || equal(tok, "struct");
+  return equal(tok, "char") || equal(tok, "int") || equal(tok, "struct") || equal(tok, "union");
 }
 
 // compound-stmt = (declaration | stmt)* "}"
