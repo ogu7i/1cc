@@ -153,6 +153,7 @@ int align_to(int n, int align);
 
 typedef enum {
   TY_CHAR,   // char
+  TY_SHORT,  // short
   TY_INT,    // int
   TY_LONG,   // long
   TY_PTR,    // pointer
@@ -191,6 +192,7 @@ struct Member {
 };
 
 extern Type *ty_char;
+extern Type *ty_short;
 extern Type *ty_int;
 extern Type *ty_long;
 

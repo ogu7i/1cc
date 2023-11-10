@@ -351,11 +351,16 @@ static Node *struct_ref(Node *lhs, Token *tok) {
   return node;
 }
 
-// declspec = "char" | "int" | "long" | "struct" struct-decl | "union" union-decl
+// declspec = "char" | "short" | "int" | "long" | "struct" struct-decl | "union" union-decl
 static Type *declspec(Token **rest, Token *tok) {
   if (equal(tok, "char")) {
     *rest = tok->next;
     return ty_char;
+  }
+
+  if (equal(tok, "short")) {
+    *rest = skip(tok, "short");
+    return ty_short;
   }
 
   if (equal(tok, "int")) {
@@ -460,7 +465,7 @@ static Node *declaration(Token **rest, Token *tok) {
 }
 
 static bool is_typename(Token *tok) {
-  return equal(tok, "char") || equal(tok, "int") || equal(tok, "long") || equal(tok, "struct") || equal(tok, "union");
+  return equal(tok, "char") || equal(tok, "short") || equal(tok, "int") || equal(tok, "long") || equal(tok, "struct") || equal(tok, "union");
 }
 
 // compound-stmt = (declaration | stmt)* "}"
