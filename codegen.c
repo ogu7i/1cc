@@ -4,6 +4,7 @@
 static int depth;
 // 関数呼び出し時に引数をセットするレジスタ群 
 static char *argreg8[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+static char *argreg32[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 static char *argreg64[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 // 現在処理している関数
 static Obj *current_fn;
@@ -77,6 +78,8 @@ static void load(Type *ty) {
 
   if (ty->size == 1)
     println("  movsbq rax, [rax]");
+  else if (ty->size == 4)
+    println("  movsxd rax, [rax]");
   else
     println("  mov rax, [rax]");
 }
@@ -95,6 +98,8 @@ static void store(Type *ty) {
 
   if (ty->size == 1)
     println("  mov [rdi], al");
+  else if (ty->size == 4)
+    println("  mov [rdi], eax");
   else
     println("  mov [rdi], rax");
 }
@@ -382,8 +387,12 @@ static void emit_text(Obj *prog) {
     for (Obj *var = fn->params; var; var = var->next) {
       if (var->ty->size == 1)
         println("  mov [rbp-%d], %s", var->offset, argreg8[i++]);
-      else
+      else if (var->ty->size == 4)
+        println("  mov [rbp-%d], %s", var->offset, argreg32[i++]);
+      else if (var->ty->size == 8)
         println("  mov [rbp-%d], %s", var->offset, argreg64[i++]);
+      else
+        unreachable();
     }
 
     gen_stmt(fn->body);

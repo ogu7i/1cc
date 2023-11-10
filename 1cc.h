@@ -49,6 +49,9 @@ Token *skip(Token *tok, char *s);
 bool consume(Token **rest, Token *tok, char *s);
 Token *tokenize_file(char *filename);
 
+#define unreachable() \
+  error("内部エラー %s:%d", __FILE__, __LINE__)
+
 //
 // parse.c
 //
