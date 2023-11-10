@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +31,7 @@ typedef struct Token Token;
 struct Token {
   TokenKind kind; // トークンの種類
   Token *next;    // 次のトークン
-  int val;        // kindがTK_NUMのとき、その数値
+  int64_t val;        // kindがTK_NUMのとき、その数値
   char *loc;      // トークンの位置
   int len;        // トークンの長さ
 
@@ -134,7 +135,7 @@ struct Node {
   Node *args;     // 実引数
 
   Obj *var;       // ND_VARのとき使う。変数。
-  int val;        // ノードがND_NUMのときに使う。数値。
+  int64_t val;        // ノードがND_NUMのときに使う。数値。
 };
 
 Obj *parse(Token *tok);
@@ -153,6 +154,7 @@ int align_to(int n, int align);
 typedef enum {
   TY_CHAR,   // char
   TY_INT,    // int
+  TY_LONG,   // long
   TY_PTR,    // pointer
   TY_FUNC,   // 関数
   TY_ARRAY,  // 配列
@@ -190,6 +192,7 @@ struct Member {
 
 extern Type *ty_char;
 extern Type *ty_int;
+extern Type *ty_long;
 
 bool is_integer(Type *ty);
 Type *copy_type(Type *ty);

@@ -111,7 +111,7 @@ static Node *new_unary(NodeKind kind, Node *expr, Token *tok) {
 }
 
 // 新しい数値ノードを作る。
-static Node *new_num(int val, Token *tok) {
+static Node *new_num(int64_t val, Token *tok) {
   Node *node = new_node(ND_NUM, tok);
   node->val = val;
   return node;
@@ -351,7 +351,7 @@ static Node *struct_ref(Node *lhs, Token *tok) {
   return node;
 }
 
-// declspec = "char" | "int" | "struct" struct-decl | "union" union-decl
+// declspec = "char" | "int" | "long" | "struct" struct-decl | "union" union-decl
 static Type *declspec(Token **rest, Token *tok) {
   if (equal(tok, "char")) {
     *rest = tok->next;
@@ -361,6 +361,11 @@ static Type *declspec(Token **rest, Token *tok) {
   if (equal(tok, "int")) {
     *rest = skip(tok, "int");
     return ty_int;
+  }
+
+  if (equal(tok, "long")) {
+    *rest = skip(tok, "long");
+    return ty_long;
   }
 
   if (equal(tok, "struct"))
@@ -455,7 +460,7 @@ static Node *declaration(Token **rest, Token *tok) {
 }
 
 static bool is_typename(Token *tok) {
-  return equal(tok, "char") || equal(tok, "int") || equal(tok, "struct") || equal(tok, "union");
+  return equal(tok, "char") || equal(tok, "int") || equal(tok, "long") || equal(tok, "struct") || equal(tok, "union");
 }
 
 // compound-stmt = (declaration | stmt)* "}"
@@ -611,7 +616,7 @@ static Node *new_sub(Node *lhs, Node *rhs, Token *tok) {
   // ptr - ptr 要素数
   if (lhs->ty->base && rhs->ty->base) {
     Node *node = new_binary(ND_SUB, lhs, rhs, tok);
-    node->ty = ty_int;
+    node->ty = ty_long;
     return new_binary(ND_DIV, node, new_num(lhs->ty->base->size, tok), tok);
   }
 
