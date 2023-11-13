@@ -152,6 +152,7 @@ int align_to(int n, int align);
 //
 
 typedef enum {
+  TY_VOID,   // void
   TY_CHAR,   // char
   TY_SHORT,  // short
   TY_INT,    // int
@@ -191,6 +192,7 @@ struct Member {
   int offset;
 };
 
+extern Type *ty_void;
 extern Type *ty_char;
 extern Type *ty_short;
 extern Type *ty_int;
