@@ -814,8 +814,8 @@ static void create_param_lvars(Type *param) {
   }
 }
 
-// function-definition = declspec declarator "{" compound-stmt
-static Obj *function_definition(Token **rest, Token *tok) {
+// function = declspec declarator (";" | "{" compound-stmt)
+static Obj *function(Token **rest, Token *tok) {
   Type *ty = declspec(&tok, tok);
   ty = declarator(&tok, tok, ty);
 
@@ -823,6 +823,11 @@ static Obj *function_definition(Token **rest, Token *tok) {
 
   Obj *fn = new_gvar(get_ident(ty->name), ty);
   fn->is_function = true;
+  fn->is_definition = !consume(rest, tok, ";");
+
+  if (!fn->is_definition)
+    return fn;
+
   enter_scope();
   create_param_lvars(ty->params);
   fn->params = locals;
@@ -858,13 +863,13 @@ static bool is_function(Token *tok) {
   return ty->kind == TY_FUNC;
 }
 
-// program = (function-definition | global-variable)*
+// program = (function | global-variable)*
 Obj *parse(Token *tok) {
   globals = NULL;
 
   while (tok->kind != TK_EOF) {
     if (is_function(tok))
-      function_definition(&tok, tok);
+      function(&tok, tok);
     else
       global_variable(&tok, tok);
   }

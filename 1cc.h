@@ -61,24 +61,24 @@ Token *tokenize_file(char *filename);
 typedef struct Obj Obj;
 struct Obj {
   Obj *next;
-  char *name;       // 変数名
-  Type *ty;         // 型
-  bool is_local;    // ローカルかグローバルか
+  char *name;         // 変数名
+  Type *ty;           // 型
+  bool is_local;      // ローカルかグローバルか
 
   // ローカル変数用
-  int offset;       // rbpからのオフセット
+  int offset;         // rbpからのオフセット
 
   // グローバル変数 / 関数用
-  bool is_function; // 関数かグローバル変数か
-
+  bool is_function;   // 関数かグローバル変数か
+  bool is_definition; // 関数定義か宣言か
   // グローバル変数
-  char *init_data;  // 初期化のためのデータ
+  char *init_data;    // 初期化のためのデータ
 
   // 関数用
-  Obj *params;      // 関数の仮引数
-  Node *body;       // 関数のbodyのAST
-  Obj *locals;      // ローカル変数
-  int stack_size;   // 変数と引数のためのスタックサイズ
+  Obj *params;        // 関数の仮引数
+  Node *body;         // 関数のbodyのAST
+  Obj *locals;        // ローカル変数
+  int stack_size;     // 変数と引数のためのスタックサイズ
 };
 
 typedef enum {
