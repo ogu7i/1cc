@@ -525,6 +525,29 @@ static Type *declarator(Token **rest, Token *tok, Type *ty) {
   return ty;
 }
 
+// abstract-declarator = "*"* ("(" abstract-declarator ")")? type-suffix
+static Type *abstract_declarator(Token **rest, Token *tok, Type *ty) {
+  while (consume(&tok, tok, "*"))
+    ty = pointer_to(ty);
+
+  if (equal(tok, "(")) {
+    Token *start = tok;
+    Type dummy = {};
+    abstract_declarator(&tok, start->next, &dummy);
+    tok = skip(tok, ")");
+    ty = type_suffix(rest, tok, ty);
+    return abstract_declarator(&tok, start->next, ty);
+  }
+
+  return type_suffix(rest, tok, ty);
+}
+
+// type-name = declspect abstract-declarator
+static Type *typename(Token **rest, Token *tok) {
+  Type *ty = declspec(&tok, tok, NULL);
+  return abstract_declarator(rest, tok, ty);
+}
+
 // declaration = declspec (declarator ("=" assign)? ("," declarator ("=" assign)?)*)? ";"
 static Node *declaration(Token **rest, Token *tok, Type *basety) {
   Node head = {};
@@ -781,6 +804,7 @@ static Node *mul(Token **rest, Token *tok) {
 
 // unary = ("+" | "-" | "*" | "&") unary 
 //       | postfix
+//       | "sizeof" "(" type-name ")"
 //       | "sizeof" unary
 static Node *unary(Token **rest, Token *tok) {
   if (equal(tok, "+"))
@@ -795,7 +819,14 @@ static Node *unary(Token **rest, Token *tok) {
   if (equal(tok, "&"))
     return new_unary(ND_ADDR, unary(rest, tok->next), tok);
 
-  if (equal(tok, "sizeof")){
+  if (equal(tok, "sizeof") && equal(tok->next, "(") && is_typename(tok->next->next)) {
+    Token *start = tok;
+    Type *ty = typename(&tok, tok->next->next);
+    *rest = skip(tok, ")");
+    return new_num(ty->size, start);
+  }
+
+  if (equal(tok, "sizeof")) {
     Node *n = unary(rest, tok->next);
     add_type(n);
     return new_num(n->ty->size, tok);
