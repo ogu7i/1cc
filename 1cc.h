@@ -106,6 +106,7 @@ typedef enum {
   ND_STMT_EXPR, // Statement expression
   ND_VAR,       // 変数
   ND_NUM,       // 整数
+  ND_CAST,      // 型キャスト
 } NodeKind;
 
 struct Node {
