@@ -139,6 +139,7 @@ struct Node {
   int64_t val;        // ノードがND_NUMのときに使う。数値。
 };
 
+Node *new_cast(Node *expr, Type *ty);
 Obj *parse(Token *tok);
 
 //
