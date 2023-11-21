@@ -872,8 +872,16 @@ static Node *funcall(Token **rest, Token *tok) {
   Node *node = new_node(ND_FUNCALL, tok);
   node->funcname = get_ident(tok);
 
+  Token *start = tok; 
   tok = tok->next->next;
 
+  VarScope *sc = find_var(start);
+  if (!sc)
+    error_tok(start, "暗黙の関数宣言です");
+  if (!sc->var || sc->var->ty->kind != TY_FUNC)
+    error_tok(start, "関数ではありません");
+
+  Type *ty = sc->var->ty->return_ty;
   Node head = {};
   Node *cur = &head;
 
@@ -882,9 +890,11 @@ static Node *funcall(Token **rest, Token *tok) {
       tok = skip(tok, ",");
 
     cur = cur->next = assign(&tok, tok);
+    add_type(cur);
   }
 
   *rest = skip(tok, ")");
+  node->ty = ty;
   node->args = head.next;
   return node;
 }
