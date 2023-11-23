@@ -887,7 +887,9 @@ static Node *funcall(Token **rest, Token *tok) {
   if (!sc->var || sc->var->ty->kind != TY_FUNC)
     error_tok(start, "関数ではありません");
 
-  Type *ty = sc->var->ty->return_ty;
+  Type *ty = sc->var->ty;
+  Type *param_ty = ty->params;
+
   Node head = {};
   Node *cur = &head;
 
@@ -895,12 +897,23 @@ static Node *funcall(Token **rest, Token *tok) {
     if (cur != &head)
       tok = skip(tok, ",");
 
-    cur = cur->next = assign(&tok, tok);
-    add_type(cur);
+    Node *arg = assign(&tok, tok);
+    add_type(arg);
+
+    if (param_ty) {
+      if (param_ty->kind == TY_STRUCT || param_ty->kind == TY_UNION)
+        error_tok(arg->tok, "構造体や共用体はまだサポートしていません");
+
+      arg = new_cast(arg, param_ty);
+      param_ty = param_ty->next;
+    }
+
+    cur = cur->next = arg;
   }
 
   *rest = skip(tok, ")");
-  node->ty = ty;
+  node->ty = ty->return_ty;
+  node->func_ty = ty;
   node->args = head.next;
   return node;
 }

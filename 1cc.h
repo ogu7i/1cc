@@ -133,6 +133,7 @@ struct Node {
 
   // 関数
   char *funcname; // 関数名
+  Type *func_ty;  // 返り値の型や引数の型
   Node *args;     // 実引数
 
   Obj *var;       // ND_VARのとき使う。変数。
