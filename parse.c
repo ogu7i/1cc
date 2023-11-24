@@ -395,7 +395,7 @@ static Node *struct_ref(Node *lhs, Token *tok) {
   return node;
 }
 
-// declspec = ("void" | "char" | "short" | "int" | "long" 
+// declspec = ("void" | "_Bool" | "char" | "short" | "int" | "long" 
 //          | "typedef"
 //          | "struct" struct-decl | "union" union-decl)+
 //
@@ -406,11 +406,12 @@ static Node *struct_ref(Node *lhs, Token *tok) {
 static Type *declspec(Token **rest, Token *tok, VarAttr *attr) {
   enum {
     VOID =  1 << 0,
-    CHAR =  1 << 2,
-    SHORT = 1 << 4,
-    INT =   1 << 6,
-    LONG =  1 << 8,
-    OTHER = 1 << 10,
+    BOOL =  1 << 2,
+    CHAR =  1 << 4,
+    SHORT = 1 << 6,
+    INT =   1 << 8,
+    LONG =  1 << 10,
+    OTHER = 1 << 12,
   };
 
   Type *ty = ty_int;
@@ -446,6 +447,8 @@ static Type *declspec(Token **rest, Token *tok, VarAttr *attr) {
 
     if (equal(tok, "void"))
       counter += VOID;
+    else if (equal(tok, "_Bool"))
+      counter += BOOL;
     else if (equal(tok, "char"))
       counter += CHAR;
     else if (equal(tok, "short"))
@@ -460,6 +463,9 @@ static Type *declspec(Token **rest, Token *tok, VarAttr *attr) {
     switch (counter) {
       case VOID:
         ty = ty_void;
+        break;
+      case BOOL:
+        ty = ty_bool;
         break;
       case CHAR:
         ty = ty_char;
@@ -604,7 +610,7 @@ static Node *declaration(Token **rest, Token *tok, Type *basety) {
 }
 
 static bool is_typename(Token *tok) {
-  static char *kw[] = {"void", "char", "short", "int", "long", "struct", "union", "typedef"};
+  static char *kw[] = {"void", "_Bool", "char", "short", "int", "long", "struct", "union", "typedef"};
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
     if (equal(tok, kw[i]))
