@@ -360,55 +360,6 @@ static void assign_lvar_offsets(Obj *fn) {
   fn->stack_size = align_to(offset, 16);
 }
 
-static int hex_to_int(char c) {
-  if (isdigit(c))
-    return c - '0';
-  if ('a' <= c && c <= 'f')
-    return c - 'a' + 10;
-  
-  return c - 'A' + 10;
-}
-
-// エスケープされた文字をそれに対応したASCIIコードで返す
-static int read_escaped(char **new_pos, char *p) {
-  // 8進数
-  if ('0' <= *p && *p <= '7') {
-    int c = *p++ - '0';
-    if ('0' <= *p && *p <= '7') {
-      c = c * 8 + *p++ - '0';
-      if ('0' <= *p && *p <= '7')
-        c = c * 8 + *p++ - '0';
-    }
-
-    *new_pos = p - 1;
-    return c;
-  }
-
-  // 16進数
-  if (*p == 'x') {
-    int c = 0;
-    while (isxdigit(*(++p)))
-      c = c * 16 + hex_to_int(*p);
-
-    *new_pos = p - 1;
-    return c;
-  }
-
-  *new_pos = p;
-
-  switch (*p) {
-    case 'a': return '\a';
-    case 'b': return '\b';
-    case 't': return '\t';
-    case 'n': return '\n';
-    case 'v': return '\v';
-    case 'f': return '\f';
-    case 'r': return '\r';
-    case 'e': return 27;
-    default: return *p;
-  }
-}
-
 static void emit_data(Obj *prog) {
   for (Obj *var = prog; var; var = var->next) {
     if (var->is_function)
@@ -419,15 +370,8 @@ static void emit_data(Obj *prog) {
     println("%s:", var->name);
 
     if (var->init_data) {
-      for (char *p = var->init_data; *p; p++) {
-        if (*p == '\\') {
-          println("  .byte %d", read_escaped(&p, p + 1));
-          continue;
-        }
-
-        println("  .byte %d", *p);
-      }
-      println("  .byte 0");
+      for (int i = 0; i < var->ty->size; i++)
+        println("  .byte %d", var->init_data[i]);
     } else {
       println("  .zero %d", var->ty->size);
     }
