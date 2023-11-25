@@ -163,6 +163,78 @@ static Token *read_string_literal(char *start) {
   return tok;
 }
 
+static int from_hex(char c) {
+  if ('0' <= c && c <= '9')
+    return c - '0';
+  if ('a' <= c && c <= 'f')
+    return c - 'a' + 10;
+  
+  return c - 'A' + 10;
+}
+
+static int read_escaped_char(char **new_pos, char *p) {
+  // 8進数
+  if ('0' <= *p && *p <= '7') {
+    int c = *p++ - '0';
+    if ('0' <= *p && *p <= '7') {
+      c = (c << 3) + (*p++ - '0');
+      if ('0' <= *p && *p <= '7')
+        c = (c << 3) + (*p++ - '0');
+    }
+
+    *new_pos = p;
+    return c;
+  }
+
+  // 16進数
+  if (*p == 'x') {
+    p++;
+    if (!isxdigit(*p))
+      error_at(p, "不正な16進エスケープシーケンスです");
+
+    int c = 0;
+    for (; isxdigit(*p); p++)
+      c = (c << 4) + from_hex(*p);
+
+    *new_pos = p;
+    return c;
+  }
+
+  *new_pos = p + 1;
+
+  switch (*p) {
+    case 'a': return '\a';
+    case 'b': return '\b';
+    case 't': return '\t';
+    case 'n': return '\n';
+    case 'v': return '\v';
+    case 'f': return '\f';
+    case 'r': return '\r';
+    case 'e': return 27;
+    default: return *p;
+  }
+}
+
+static Token *read_char_literal(char *start) {
+  char *p = start + 1;
+  if (*p == '\0')
+    error_at(start, "閉じられていない文字リテラルです");
+
+  char c;
+  if (*p == '\\')
+    c = read_escaped_char(&p, p + 1);
+  else
+    c = *p++;
+
+  char *end = strchr(p, '\'');
+  if (!end)
+    error_at(p, "閉じられていない文字リテラルです");
+
+  Token *tok = new_token(TK_NUM, start, end + 1);
+  tok->val = c;
+  return tok;
+}
+
 // pをトークナイズしてトークン列を返す
 static Token *tokenize(char *p) {
   current_input = p;
@@ -196,6 +268,13 @@ static Token *tokenize(char *p) {
     // 文字列リテラル
     if (*p == '"') {
       cur = cur->next = read_string_literal(p);
+      p += cur->len;
+      continue;
+    }
+
+    // 文字リテラル
+    if (*p == '\'') {
+      cur = cur->next = read_char_literal(p);
       p += cur->len;
       continue;
     }
