@@ -161,6 +161,7 @@ typedef enum {
   TY_SHORT,  // short
   TY_INT,    // int
   TY_LONG,   // long
+  TY_ENUM,   // enum
   TY_PTR,    // pointer
   TY_FUNC,   // 関数
   TY_ARRAY,  // 配列
@@ -208,5 +209,6 @@ Type *copy_type(Type *ty);
 Type *pointer_to(Type *base);
 Type *func_type(Type *return_ty);
 Type *array_of(Type *base, int len);
+Type *enum_type(void);
 void add_type(Node *node);
 

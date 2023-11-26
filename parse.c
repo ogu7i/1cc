@@ -1,15 +1,17 @@
 #include "1cc.h"
 
-// あるスコープで扱える変数やtypedefのリスト
+// あるスコープで扱える変数やtypedef、enumのリスト
 typedef struct VarScope VarScope;
 struct VarScope {
   VarScope *next;
   char *name;
   Obj *var;
   Type *type_def;
+  Type *enum_ty;
+  int enum_val;
 };
 
-// 構造体/共用体のタグ名リスト
+// 構造体/共用体、enumのタグ名リスト
 typedef struct TagScope TagScope;
 struct TagScope {
   TagScope *next;
@@ -44,6 +46,7 @@ static Node *stmt(Token **rest, Token *tok);
 static Type *struct_decl(Token **rest, Token *tok);
 static Type *union_decl(Token **rest, Token *tok);
 static Type *declspec(Token **rest, Token *tok, VarAttr *attr);
+static Type *enum_specifier(Token **rest, Token *tok);
 static Type *type_suffix(Token **rest, Token *tok, Type *ty);
 static Type *declarator(Token **rest, Token *tok, Type *ty);
 static Node *declaration(Token **rest, Token *tok, Type *basety);
@@ -99,6 +102,13 @@ static Type *find_typedef(Token *tok) {
       return sc->type_def;
   }
   return NULL;
+}
+
+static long get_number(Token *tok) {
+  if (tok->kind != TK_NUM)
+    error_tok(tok, "数値ではありません");
+
+  return tok->val;
 }
 
 // 現在のスコープに新しいタグを追加する
@@ -397,7 +407,8 @@ static Node *struct_ref(Node *lhs, Token *tok) {
 
 // declspec = ("void" | "_Bool" | "char" | "short" | "int" | "long" 
 //          | "typedef"
-//          | "struct" struct-decl | "union" union-decl)+
+//          | "struct" struct-decl | "union" union-decl
+//          | "enum-specifier)+
 //
 // 型指定子はどういう順番で出現しても良い。`long int`でも`int long`でも同じ。
 // ただし、char intみたいなのは認められない。
@@ -428,7 +439,7 @@ static Type *declspec(Token **rest, Token *tok, VarAttr *attr) {
     }
 
     Type *ty2 = find_typedef(tok);
-    if (equal(tok, "struct") || equal(tok, "union") || ty2) {
+    if (equal(tok, "struct") || equal(tok, "union") || equal(tok, "enum") || ty2) {
       if (counter)
         break;
 
@@ -436,6 +447,8 @@ static Type *declspec(Token **rest, Token *tok, VarAttr *attr) {
         ty = struct_decl(&tok, tok->next);
       else if (equal(tok, "union"))
         ty = union_decl(&tok, tok->next);
+      else if (equal(tok, "enum"))
+        ty = enum_specifier(&tok, tok->next);
       else {
         ty = ty2;
         tok = tok->next;
@@ -494,6 +507,59 @@ static Type *declspec(Token **rest, Token *tok, VarAttr *attr) {
   return ty;
 }
 
+// enum-specifier = ident? "{" enum-list? "}"
+//                | ident ("{" enum-list? "}")?
+//
+// enum-list      = ident ("=" num)? ("," ident ("=" num)?)*
+static Type *enum_specifier(Token **rest, Token *tok) {
+  Type *ty = enum_type();
+
+  // タグの読み込み
+  Token *tag = NULL;
+  if (tok->kind == TK_IDENT) {
+    tag = tok;
+    tok = tok->next;
+  }
+
+  if (tag && !equal(tok, "{")) {
+    Type *ty = find_tag(tag);
+    if (!ty)
+      error_tok(tag, "不明な列挙型です");
+    if (ty->kind != TY_ENUM)
+      error_tok(tag, "enumタグではありません");
+    
+    *rest = tok;
+    return ty;
+  }
+
+  tok = skip(tok, "{");
+
+  int i = 0;
+  int val = 0;
+  while (!equal(tok, "}")) {
+    if (i++ > 0)
+      tok = skip(tok, ",");
+
+    char *name = get_ident(tok);
+    tok = tok->next;
+
+    if (equal(tok, "=")) {
+      val = get_number(tok->next);
+      tok = tok->next->next;
+    }
+
+    VarScope *sc = push_scope(name);
+    sc->enum_ty = ty;
+    sc->enum_val = val++;
+  }
+
+  *rest = tok->next;
+
+  if (tag)
+    push_tag_scope(tag, ty);
+  return ty;
+}
+
 // func-params = declspec declarator ("," declspec declarator)*
 static Type *func_params(Token **rest, Token *tok, Type *ty) {
   Type head = {};
@@ -519,14 +585,10 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
     return func_params(rest, tok->next, ty);
 
   if (equal(tok, "[")) {
-    tok = skip(tok, "[");
-    if (tok->kind != TK_NUM)
-      error_tok(tok, "数値を指定してください");
-
-    int len = tok->val;  
-    tok = skip(tok->next, "]");
+    int sz = get_number(tok->next);
+    tok = skip(tok->next->next, "]");
     ty = type_suffix(rest, tok, ty);
-    return array_of(ty, len);
+    return array_of(ty, sz);
   }
 
   *rest = tok;
@@ -610,7 +672,7 @@ static Node *declaration(Token **rest, Token *tok, Type *basety) {
 }
 
 static bool is_typename(Token *tok) {
-  static char *kw[] = {"void", "_Bool", "char", "short", "int", "long", "struct", "union", "typedef"};
+  static char *kw[] = {"void", "_Bool", "char", "short", "int", "long", "struct", "union", "typedef", "enum"};
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
     if (equal(tok, kw[i]))
@@ -980,11 +1042,17 @@ static Node *primary(Token **rest, Token *tok) {
 
     // 変数
     VarScope *sc = find_var(tok);
-    if (!sc || !sc->var)
+    if (!sc || (!sc->var && !sc->enum_ty))
       error_tok(tok, "未定義の変数です");
 
+    Node *node;
+    if (sc->var)
+      node = new_var_node(sc->var, tok);
+    else
+      node = new_num(sc->enum_val, tok);
+
     *rest = tok->next;
-    return new_var_node(sc->var, tok);
+    return node;
   }
 
   if (tok->kind == TK_NUM) {

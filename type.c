@@ -17,7 +17,9 @@ static Type *new_type(TypeKind kind, int size, int align) {
 
 // 整数値を持つ型ならtrue
 bool is_integer(Type *ty) {
-  return ty->kind == TY_BOOL || ty->kind == TY_CHAR || ty->kind == TY_SHORT || ty->kind == TY_INT || ty->kind == TY_LONG;
+  TypeKind k = ty->kind;
+  return k == TY_BOOL || k == TY_CHAR || k == TY_SHORT ||
+         k == TY_INT  || k == TY_LONG || k == TY_ENUM;
 }
 
 // tyのコピーを返す
@@ -25,6 +27,10 @@ Type *copy_type(Type *ty) {
   Type *ret = calloc(1, sizeof(Type));
   *ret = *ty;
   return ret;
+}
+
+Type *enum_type(void) {
+  return new_type(TY_ENUM, 4, 4);
 }
 
 // base型へのポインタ型を作って返す
