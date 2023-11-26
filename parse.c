@@ -408,7 +408,7 @@ static Node *struct_ref(Node *lhs, Token *tok) {
 // declspec = ("void" | "_Bool" | "char" | "short" | "int" | "long" 
 //          | "typedef"
 //          | "struct" struct-decl | "union" union-decl
-//          | "enum-specifier)+
+//          | "enum" enum-specifier)+
 //
 // 型指定子はどういう順番で出現しても良い。`long int`でも`int long`でも同じ。
 // ただし、char intみたいなのは認められない。
@@ -634,7 +634,7 @@ static Type *abstract_declarator(Token **rest, Token *tok, Type *ty) {
   return type_suffix(rest, tok, ty);
 }
 
-// type-name = declspect abstract-declarator
+// type-name = declspec abstract-declarator
 static Type *typename(Token **rest, Token *tok) {
   Type *ty = declspec(&tok, tok, NULL);
   return abstract_declarator(rest, tok, ty);
