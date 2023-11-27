@@ -30,6 +30,7 @@ struct Scope {
 // typedefやexternのような変数属性
 typedef struct {
   bool is_typedef;
+  bool is_static;
 } VarAttr;
 
 // パース中に作られたローカル変数はこのリストの中に
@@ -406,7 +407,7 @@ static Node *struct_ref(Node *lhs, Token *tok) {
 }
 
 // declspec = ("void" | "_Bool" | "char" | "short" | "int" | "long" 
-//          | "typedef"
+//          | "typedef" | "static"
 //          | "struct" struct-decl | "union" union-decl
 //          | "enum" enum-specifier)+
 //
@@ -429,11 +430,18 @@ static Type *declspec(Token **rest, Token *tok, VarAttr *attr) {
   int counter = 0;
 
   while (is_typename(tok)) {
-    if (equal(tok, "typedef")) {
+    if (equal(tok, "typedef") || equal(tok, "static")) {
       if (!attr)
         error_tok(tok, "記憶クラス指定子はこのコンテキストで許可されていません");
 
-      attr->is_typedef = true;
+      if (equal(tok, "typedef"))
+        attr->is_typedef = true;
+      else
+        attr->is_static = true;
+
+      if (attr->is_typedef && attr->is_static)
+        error_tok(tok, "typedefとstaticを同時に使うことはできません");
+
       tok = tok->next;
       continue;
     }
@@ -672,7 +680,10 @@ static Node *declaration(Token **rest, Token *tok, Type *basety) {
 }
 
 static bool is_typename(Token *tok) {
-  static char *kw[] = {"void", "_Bool", "char", "short", "int", "long", "struct", "union", "typedef", "enum"};
+  static char *kw[] = {
+    "void", "_Bool", "char", "short", "int", "long", "struct", 
+    "union", "typedef", "enum", "static",
+  };
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
     if (equal(tok, kw[i]))
@@ -1094,7 +1105,7 @@ static void create_param_lvars(Type *param) {
 }
 
 // function = declspec declarator (";" | "{" compound-stmt)
-static Token *function(Token *tok, Type *basety) {
+static Token *function(Token *tok, Type *basety, VarAttr *attr) {
   Type *ty = declarator(&tok, tok, basety);
 
   locals = NULL;
@@ -1102,6 +1113,7 @@ static Token *function(Token *tok, Type *basety) {
   Obj *fn = new_gvar(get_ident(ty->name), ty);
   fn->is_function = true;
   fn->is_definition = !consume(&tok, tok, ";");
+  fn->is_static = attr->is_static;
 
   if (!fn->is_definition)
     return tok;
@@ -1156,7 +1168,7 @@ Obj *parse(Token *tok) {
     }
 
     if (is_function(tok))
-      tok = function(tok, basety);
+      tok = function(tok, basety, &attr);
     else
       tok = global_variable(tok, basety);
   }

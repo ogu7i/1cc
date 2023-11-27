@@ -71,6 +71,7 @@ struct Obj {
   // グローバル変数 / 関数用
   bool is_function;   // 関数かグローバル変数か
   bool is_definition; // 関数定義か宣言か
+  bool is_static;     // staticか
   // グローバル変数
   char *init_data;    // 初期化のためのデータ
 
