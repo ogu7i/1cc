@@ -1,5 +1,13 @@
 #include "test.h"
 
+int gvar;
+int gvar2;
+
+int *calc_and_assign() {
+  gvar = gvar + 1;
+  return &gvar2;
+}
+
 int main() {
   ASSERT(0, 0);
   ASSERT(42, 42);
@@ -32,6 +40,18 @@ int main() {
   ASSERT(0, 1>=2);
 
   ASSERT(0, 1073741824 * 100 / 100);
+
+  ASSERT(7, ({ int i=2; i+=5; i; }));
+  ASSERT(7, ({ int i=2; i+=5; }));
+  ASSERT(3, ({ int i=5; i-=2; i; }));
+  ASSERT(3, ({ int i=5; i-=2; }));
+  ASSERT(6, ({ int i=3; i*=2; i; }));
+  ASSERT(6, ({ int i=3; i*=2; }));
+  ASSERT(3, ({ int i=6; i/=2; i; }));
+  ASSERT(3, ({ int i=6; i/=2; }));
+
+  gvar = 0;
+  ASSERT(1, ({ *calc_and_assign() += 3; gvar; }));
 
   printf("OK\n");
   return 0;

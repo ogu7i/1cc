@@ -121,7 +121,9 @@ static bool startswith(char *p, char *q) {
 
 // 記号を読んでその長さを返す
 static int read_punct(char *p) {
-  static char *kw[] = {"==", "!=", "<=", ">=", "->"};
+  static char *kw[] = {
+    "==", "!=", "<=", ">=", "->", "+=", "-=", "*=", "/=",
+  };
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
     if(startswith(p, kw[i]))
