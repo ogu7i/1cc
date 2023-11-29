@@ -1054,7 +1054,20 @@ static Node *funcall(Token **rest, Token *tok) {
   return node;
 }
 
-// postfix = primary ("[" expr "]" | "." ident | "->" ident)* 
+// A++を (Aの型)((A += 1) - 1)に変換する
+static Node *new_inc_dec(Node *node, Token *tok, int addend) {
+  add_type(node);
+  
+  // A += 1
+  Node *assign = to_assign(new_add(node, new_num(addend, tok), tok));
+
+  // ((A += 1) - 1)
+  Node *n = new_add(assign, new_num(-addend, tok), tok);
+
+  return new_cast(n, node->ty);
+}
+
+// postfix = primary ("[" expr "]" | "." ident | "->" ident | "++" | "--")*
 static Node *postfix(Token **rest, Token *tok) {
   Node *node = primary(&tok, tok);
 
@@ -1078,6 +1091,18 @@ static Node *postfix(Token **rest, Token *tok) {
       node = new_unary(ND_DEREF, node, tok);
       node = struct_ref(node, tok->next);
       tok = tok->next->next;
+      continue;
+    }
+
+    if (equal(tok, "++")) {
+      node = new_inc_dec(node, tok, 1);
+      tok = tok->next;
+      continue;
+    }
+
+    if (equal(tok, "--")) {
+      node = new_inc_dec(node, tok, -1);
+      tok = tok->next;
       continue;
     }
 
