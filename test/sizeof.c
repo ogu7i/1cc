@@ -31,6 +31,8 @@ int main() {
   ASSERT(4, sizeof(1));
   ASSERT(8, sizeof(4294967296));
 
+  ASSERT(1, ({ char i; sizeof(++i); }));
+
   printf("OK\n");
   return 0;
 }

@@ -968,6 +968,7 @@ static Node *cast(Token **rest, Token *tok) {
 }
 
 // unary = ("+" | "-" | "*" | "&") cast
+//       | ("++" | "--") unary
 //       | postfix
 //       | "sizeof" "(" type-name ")"
 //       | "sizeof" cast
@@ -983,6 +984,14 @@ static Node *unary(Token **rest, Token *tok) {
 
   if (equal(tok, "&"))
     return new_unary(ND_ADDR, cast(rest, tok->next), tok);
+
+  // `++i`は`i += 1`とする
+  if (equal(tok, "++"))
+    return to_assign(new_add(unary(rest, tok->next), new_num(1, tok), tok));
+
+  // `--i`も`i -= 1`とする
+  if (equal(tok, "--"))
+    return to_assign(new_sub(unary(rest, tok->next), new_num(1, tok), tok));
 
   if (equal(tok, "sizeof") && equal(tok->next, "(") && is_typename(tok->next->next)) {
     Token *start = tok;

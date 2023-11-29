@@ -53,6 +53,10 @@ int main() {
   gvar = 0;
   ASSERT(1, ({ *calc_and_assign() += 3; gvar; }));
 
+  ASSERT(3, ({ int i=2; ++i; }));
+  ASSERT(2, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; ++*p; }));
+  ASSERT(0, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; --*p; }));
+
   printf("OK\n");
   return 0;
 }
