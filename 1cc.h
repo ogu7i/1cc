@@ -91,6 +91,7 @@ typedef enum {
   ND_NEG,       // 単項 -
   ND_ADDR,      // 単項 &
   ND_DEREF,     // 単項 *
+  ND_NOT,       // !
   ND_EQ,        // ==
   ND_NE,        // !=
   ND_LT,        // <
