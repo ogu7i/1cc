@@ -211,6 +211,36 @@ static void gen_expr(Node *node) {
       gen_expr(node->lhs);
       println("  not rax");
       return;
+    case ND_LOGAND: {
+      int c = count();
+      gen_expr(node->lhs);
+      println("  cmp rax, 0");
+      println("  je .L.false.%d", c);
+      gen_expr(node->rhs);
+      println("  cmp rax, 0");
+      println("  je .L.false.%d", c);
+      println("  mov rax, 1");
+      println("  jmp .L.end.%d", c);
+      println(".L.false.%d:", c);
+      println("  mov rax, 0");
+      println(".L.end.%d:", c);
+      return;
+    }
+    case ND_LOGOR: {
+      int c = count();
+      gen_expr(node->lhs);
+      println("  cmp rax, 0");
+      println("  jne .L.true.%d", c);
+      gen_expr(node->rhs);
+      println("  cmp rax, 0");
+      println("  jne .L.true.%d", c);
+      println("  mov rax, 0");
+      println("  jmp .L.end.%d", c);
+      println(".L.true.%d:", c);
+      println("  mov rax, 1");
+      println(".L.end.%d:", c);
+      return;
+    }
     case ND_FUNCALL: {
       int nargs = 0;
       for (Node *arg = node->args; arg; arg = arg->next) {
