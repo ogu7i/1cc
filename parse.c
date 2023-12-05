@@ -592,8 +592,21 @@ static Type *func_params(Token **rest, Token *tok, Type *ty) {
     if (cur != &head)
       tok = skip(tok, ",");
 
+    /*
     Type *base_ty = declspec(&tok, tok, NULL);
     Type *param_ty = declarator(&tok, tok, base_ty);
+    cur = cur->next = copy_type(param_ty);
+    */
+    Type *param_ty = declspec(&tok, tok, NULL);
+    param_ty = declarator(&tok, tok, param_ty);
+
+    // 関数の引数の場合だけ、配列はポインタに変換される
+    if (param_ty->kind == TY_ARRAY) {
+      Token *name = param_ty->name;
+      param_ty = pointer_to(param_ty->base);
+      param_ty->name = name;
+    }
+
     cur = cur->next = copy_type(param_ty);
   }
 
