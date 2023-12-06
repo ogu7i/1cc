@@ -344,23 +344,36 @@ static Type *struct_union_decl(Token **rest, Token *tok) {
   }
 
   if (tag && !equal(tok, "{")) {
-    Type *ty = find_tag(tag);
-    if (!ty)
-      error_tok(tag, "不明な構造体型です");
     *rest = tok;
+
+    Type *ty = find_tag(tag);
+    if (ty)
+      return ty;
+
+    ty = struct_type();
+    // このサイズが-1のままなら、未定義の構造体型である
+    ty->size = -1;
+    push_tag_scope(tag, ty);
     return ty;
   }
 
   tok = skip(tok, "{");
 
-  Type *ty = calloc(1, sizeof(Type));
-  ty->kind = TY_STRUCT;
+  Type *ty = struct_type();
   struct_members(rest, tok, ty);
-  ty->align = 1;
 
-  // タグ名があれば構造体の型をスコープに追加しておく
-  if (tag)
+  if (tag) {
+    // 再定義なら、以前の型を上書きする。
+    // そうでないなら、構造体型として登録。
+    for (TagScope *sc = scope->tags; sc; sc = sc->next) {
+      if (equal(tag, sc->name)) {
+        *sc->ty = *ty;
+        return sc->ty;
+      }
+    }
+
     push_tag_scope(tag, ty);
+  }
 
   return ty;
 }
@@ -369,6 +382,9 @@ static Type *struct_union_decl(Token **rest, Token *tok) {
 static Type *struct_decl(Token **rest, Token *tok) {
   Type *ty = struct_union_decl(rest, tok);
   ty->kind = TY_STRUCT;
+
+  if (ty->size < 0)
+    return ty;
 
   // メンバのオフセットを割り当てる
   int offset = 0;
@@ -389,6 +405,9 @@ static Type *struct_decl(Token **rest, Token *tok) {
 static Type *union_decl(Token **rest, Token *tok) {
   Type *ty = struct_union_decl(rest, tok);
   ty->kind = TY_UNION;
+
+  if (ty->size < 0)
+    return ty;
 
   // 共用体の場合はオフセットの割当は不要
   // 各メンバはcallocで0初期化されてるのでオフセットも0
