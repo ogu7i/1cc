@@ -42,6 +42,10 @@ static Scope *scope = &(Scope){};
 // 現在パース中の関数オブジェクト
 static Obj *current_fn;
 
+// 現在パース中の関数のすべてのgoto文とラベルのリスト
+static Node *gotos;
+static Node *labels;
+
 static bool is_typename(Token *tok);
 static Node *stmt(Token **rest, Token *tok);
 static Type *struct_decl(Token **rest, Token *tok);
@@ -218,21 +222,37 @@ static Obj *new_gvar(char *name, Type *ty) {
   return var;
 }
 
-// 新しい文字列リテラルを作る
-static Obj *new_string_literal(char *p, Type *ty) {
+static char *new_unique_name(void) {
   static int id = 0;
   char *label = calloc(1, 20);
-  sprintf(label, ".LC%d", id++);
-  
-  Obj *var = new_gvar(label, ty);
+  sprintf(label, ".L..%d", id++);
+  return label;
+}
+
+static Obj *new_anon_gvar(Type *ty) {
+  return new_gvar(new_unique_name(), ty);
+}
+
+// 新しい文字列リテラルを作る
+static Obj *new_string_literal(char *p, Type *ty) {
+  Obj *var = new_anon_gvar(ty);
   var->init_data = p;
   return var;
+}
+
+static char *get_ident(Token *tok) {
+  if (tok->kind != TK_IDENT)
+    error_tok(tok, "識別子ではありません");
+
+  return strndup(tok->loc, tok->len);
 }
 
 // stmt = "return" expr ";"
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
 //      | "for" "(" expr-stmt expr? ";" expr? ")" stmt
+//      | "goto" ident ";"
+//      | ident ":" stmt
 //      | "{" compound-stmt 
 //      | expr-stmt
 static Node *stmt(Token **rest, Token *tok) {
@@ -297,17 +317,50 @@ static Node *stmt(Token **rest, Token *tok) {
     return node;
   }
 
+  if (equal(tok, "goto")) {
+    Node *node = new_node(ND_GOTO, tok);
+    node->label = get_ident(tok->next);
+    node->goto_next = gotos;
+    gotos = node;
+    *rest = skip(tok->next->next, ";");
+    return node;
+  }
+
+  if (tok->kind == TK_IDENT && equal(tok->next, ":")) {
+    Node *node = new_node(ND_LABEL, tok);
+    node->label = strndup(tok->loc, tok->len);
+    node->unique_label = new_unique_name();
+    node->lhs = stmt(rest, tok->next->next);
+    node->goto_next = labels;
+    labels = node;
+    return node;
+  }
+
   if (equal(tok, "{"))
     return compound_stmt(rest, tok->next);
 
   return expr_stmt(rest, tok);
 }
 
-static char *get_ident(Token *tok) {
-  if (tok->kind != TK_IDENT)
-    error_tok(tok, "識別子ではありません");
+// gotoとラベルをマッチさせる
+//
+// ラベルが後から出現できるのでgotoは関数パースと同時に
+// 解決できない。
+// なので、関数全体をパースしてからやらないといけない
+static void resolve_goto_labels(void) {
+  for (Node *x = gotos; x; x = x->goto_next) {
+    for (Node *y = labels; y; y = y->goto_next) {
+      if (!strcmp(x->label, y->label)) {
+        x->unique_label = y->unique_label;
+        break;
+      }
+    }
 
-  return strndup(tok->loc, tok->len);
+    if (x->unique_label == NULL)
+      error_tok(x->tok->next, "未宣言のラベルです");
+  }
+
+  gotos = labels = NULL;
 }
 
 // struct-members = (declspec declarator ("," declarator)* ";")* "}"
@@ -1342,6 +1395,7 @@ static Token *function(Token *tok, Type *basety, VarAttr *attr) {
   fn->body = compound_stmt(&tok, tok);
   fn->locals = locals;
   leave_scope();
+  resolve_goto_labels();
   return tok;
 }
 

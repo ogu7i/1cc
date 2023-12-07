@@ -111,6 +111,8 @@ typedef enum {
   ND_WHILE,     // while
   ND_FOR,       // for
   ND_BLOCK,     // { ... }
+  ND_GOTO,      // goto
+  ND_LABEL,     // ラベル文
   ND_FUNCALL,   // 関数呼び出し
   ND_EXPR_STMT, // 式文
   ND_STMT_EXPR, // Statement expression
@@ -145,6 +147,11 @@ struct Node {
   char *funcname; // 関数名
   Type *func_ty;  // 返り値の型や引数の型
   Node *args;     // 実引数
+
+  // gotoかラベル付された文
+  char *label;
+  char *unique_label;
+  Node *goto_next;
 
   Obj *var;       // ND_VARのとき使う。変数。
   int64_t val;        // ノードがND_NUMのときに使う。数値。

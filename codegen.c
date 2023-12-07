@@ -336,6 +336,13 @@ static void gen_stmt(Node *node) {
   println("  .loc 1 %d", node->tok->line_no);
 
   switch (node->kind) {
+    case ND_GOTO:
+      println("  jmp %s", node->unique_label);
+      return;
+    case ND_LABEL:
+      println("%s:", node->unique_label);
+      gen_stmt(node->lhs);
+      return;
     case ND_RETURN:
       gen_expr(node->lhs);
       println("  jmp .L.return.%s", current_fn->name);
