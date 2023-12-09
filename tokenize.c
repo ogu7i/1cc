@@ -137,7 +137,7 @@ static bool is_keyword(Token *tok) {
   static char *kw[] = {
     "return", "if", "else", "while", "for", "int", "sizeof", 
     "char", "struct", "union", "long", "short", "void", 
-    "typedef", "_Bool", "enum", "static", "goto",
+    "typedef", "_Bool", "enum", "static", "goto", "break",
   };
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)

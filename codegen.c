@@ -378,10 +378,10 @@ static void gen_stmt(Node *node) {
       println(".L.begin.%d:", c);
       gen_expr(node->cond);
       println("  cmp rax, 0");
-      println("  je .L.end.%d", c);
+      println("  je %s", node->brk_label);
       gen_stmt(node->then);
       println("  jmp .L.begin.%d", c);
-      println(".L.end.%d:", c);
+      println("%s:", node->brk_label);
       return;
     }
     case ND_FOR: {
@@ -392,7 +392,7 @@ static void gen_stmt(Node *node) {
       if (node->cond) {
         gen_expr(node->cond);
         println("  cmp rax, 0");
-        println("  je .L.end.%d", c);
+        println("  je %s", node->brk_label);
       }
 
       gen_stmt(node->then);
@@ -401,7 +401,7 @@ static void gen_stmt(Node *node) {
         gen_expr(node->inc);
 
       println("  jmp .L.begin.%d", c);
-      println(".L.end.%d:", c);
+      println("%s:", node->brk_label);
       return;
     }
   }

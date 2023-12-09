@@ -138,6 +138,9 @@ struct Node {
   Node *init;     // forの初期化部
   Node *inc;      // forの更新部
 
+  // breakのラベル
+  char *brk_label;
+
   Node *body;     // ブロックかstatement expression
 
   // 構造体
