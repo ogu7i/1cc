@@ -140,6 +140,8 @@ struct Node {
 
   // breakのラベル
   char *brk_label;
+  // continueのラベル
+  char *cont_label;
 
   Node *body;     // ブロックかstatement expression
 

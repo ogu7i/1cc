@@ -380,6 +380,7 @@ static void gen_stmt(Node *node) {
       println("  cmp rax, 0");
       println("  je %s", node->brk_label);
       gen_stmt(node->then);
+      println("%s:", node->cont_label);
       println("  jmp .L.begin.%d", c);
       println("%s:", node->brk_label);
       return;
@@ -396,7 +397,8 @@ static void gen_stmt(Node *node) {
       }
 
       gen_stmt(node->then);
-      
+      println("%s:", node->cont_label);
+
       if (node->inc)
         gen_expr(node->inc);
 
