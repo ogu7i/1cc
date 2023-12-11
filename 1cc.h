@@ -110,6 +110,8 @@ typedef enum {
   ND_IF,        // if
   ND_WHILE,     // while
   ND_FOR,       // for
+  ND_SWITCH,    // switch
+  ND_CASE,      // case
   ND_BLOCK,     // { ... }
   ND_GOTO,      // goto
   ND_LABEL,     // ラベル文
@@ -158,8 +160,12 @@ struct Node {
   char *unique_label;
   Node *goto_next;
 
+  // switch,case
+  Node *case_next;
+  Node *default_case;
+
   Obj *var;       // ND_VARのとき使う。変数。
-  int64_t val;        // ノードがND_NUMのときに使う。数値。
+  int64_t val;    // ノードがND_NUMのときに使う。数値。
 };
 
 Node *new_cast(Node *expr, Type *ty);
