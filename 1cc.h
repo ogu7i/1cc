@@ -106,6 +106,7 @@ typedef enum {
   ND_LT,        // <
   ND_LE,        // <=
   ND_ASSIGN,    // =
+  ND_COND,      // 三項演算子
   ND_COMMA,     // , コンマ演算子
   ND_MEMBER,    // . 構造体のメンバアクセス
   ND_RETURN,    // return
