@@ -92,6 +92,8 @@ typedef enum {
   ND_BITAND,    // &
   ND_BITOR,     // |
   ND_BITXOR,    // ^
+  ND_SHL,       // <<
+  ND_SHR,       // >>
   ND_NEG,       // 単項 -
   ND_ADDR,      // 単項 &
   ND_DEREF,     // 単項 *

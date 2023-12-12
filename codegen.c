@@ -327,6 +327,14 @@ static void gen_expr(Node *node) {
 
       println("  movzb rax, al");
       return;
+    case ND_SHL:
+      println("  mov rcx, rdi");
+      println("  shl %s, cl", ax);
+      return;
+    case ND_SHR:
+      println("  mov rcx, rdi");
+      println("  sar %s, cl", ax);
+      return;
   }
 
   error_tok(node->tok, "不正な式です");
