@@ -84,6 +84,7 @@ struct Obj {
 };
 
 typedef enum {
+  ND_NULL_EXPR, // 何もしない
   ND_ADD,       // +
   ND_SUB,       // -
   ND_MUL,       // *

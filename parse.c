@@ -33,6 +33,30 @@ typedef struct {
   bool is_static;
 } VarAttr;
 
+// 変数の初期化子を表す構造体
+// 初期化子はint x[2][2] = {{1,2}, {3,4}}のようにネスト可能で
+// この構造体は木構造である。
+typedef struct Initializer Initializer;
+struct Initializer {
+  Initializer *next;
+  Type *ty;
+  Token *tok;
+
+  // 合成型(配列や構造体)でなく初期化子があれば`expr`は初期化式を持つ
+  Node *expr;
+
+  // 合成型の初期化子であれば`children`はその子の初期化子をもつ
+  Initializer **children;
+};
+
+// ローカル変数の初期化子
+typedef struct InitDesg InitDesg;
+struct InitDesg {
+  InitDesg *next;
+  int idx;
+  Obj *var;
+};
+
 // パース中に作られたローカル変数はこのリストの中に
 static Obj *locals;
 static Obj *globals;
@@ -65,6 +89,7 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty);
 static Type *type_suffix(Token **rest, Token *tok, Type *ty);
 static Type *declarator(Token **rest, Token *tok, Type *ty);
 static Node *declaration(Token **rest, Token *tok, Type *basety);
+static Node *lvar_initializer(Token **rest, Token *tok, Obj *var);
 static Node *compound_stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
 static Node *expr(Token **rest, Token *tok);
@@ -199,6 +224,19 @@ static VarScope *push_scope(char *name) {
   sc->next = scope->vars;
   scope->vars = sc;
   return sc;
+}
+
+static Initializer *new_initializer(Type *ty) {
+  Initializer *init = calloc(1, sizeof(Initializer));
+  init->ty = ty;
+
+  if (ty->kind == TY_ARRAY) {
+    init->children = calloc(ty->array_len, sizeof(Initializer *));
+    for (int i = 0; i < ty->array_len; i++)
+      init->children[i] = new_initializer(ty->base);
+  }
+
+  return init;
 }
 
 static Obj *new_var(char *name, Type *ty) {
@@ -865,19 +903,78 @@ static Node *declaration(Token **rest, Token *tok, Type *basety) {
 
     Obj *var = new_lvar(get_ident(ty->name), ty);
 
-    if (!equal(tok, "="))
-      continue;
-
-    Node *lhs = new_var_node(var, ty->name);
-    Node *rhs = assign(&tok, tok->next);
-    Node *node = new_binary(ND_ASSIGN, lhs, rhs, tok);
-    cur = cur->next = new_unary(ND_EXPR_STMT, node, tok);
+    if (equal(tok, "=")) {
+      Node *expr = lvar_initializer(&tok, tok->next, var);
+      cur = cur->next = new_unary(ND_EXPR_STMT, expr, tok);
+    }
   }
 
   Node *node = new_node(ND_BLOCK, tok);
   node->body = head.next;
   *rest = skip(tok, ";");
   return node;
+}
+
+// initializer = "{" initializer ("," initializer)* "}" | assign
+static void initializer2(Token **rest, Token *tok, Initializer *init) {
+  if (init->ty->kind == TY_ARRAY) {
+    tok = skip(tok, "{");
+
+    for (int i = 0; i < init->ty->array_len; i++) {
+      if (i > 0)
+        tok = skip(tok, ",");
+      initializer2(&tok, tok, init->children[i]);
+    }
+    *rest = skip(tok, "}");
+    return ;
+  }
+
+  init->expr = assign(rest, tok);
+}
+
+static Initializer *initializer(Token **rest, Token *tok, Type *ty) {
+  Initializer *init = new_initializer(ty);
+  initializer2(rest, tok, init);
+  return init;
+}
+
+static Node *init_desg_expr(InitDesg *desg, Token *tok) {
+  if (desg->var)
+    return new_var_node(desg->var, tok);
+
+  Node *lhs = init_desg_expr(desg->next, tok);
+  Node *rhs = new_num(desg->idx, tok);
+  return new_unary(ND_DEREF, new_add(lhs, rhs, tok), tok);
+}
+
+static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token *tok) {
+  if (ty->kind == TY_ARRAY) {
+    Node *node = new_node(ND_NULL_EXPR, tok);
+    for (int i = 0; i < ty->array_len; i++) {
+      InitDesg desg2 = { desg, i };
+      Node *rhs = create_lvar_init(init->children[i], ty->base, &desg2, tok);
+      node = new_binary(ND_COMMA, node, rhs, tok);
+    }
+    return node;
+  }
+
+  Node *lhs = init_desg_expr(desg, tok);
+  Node *rhs = init->expr;
+  return new_binary(ND_ASSIGN, lhs, rhs, tok);
+}
+
+// 初期化子を持った変数定義は変数定義と代入の省略記法。
+// この関数は初期化子のための代入式を生成する。
+// 例えばint x[2][2] = {{6, 7}, {8, 9}}は
+// x[0][0] = 6;
+// x[0][1] = 7;
+// x[1][0] = 8;
+// x[1][1] = 9;
+// に変換される。
+static Node *lvar_initializer(Token **rest, Token *tok, Obj *var) {
+  Initializer *init = initializer(rest, tok, var->ty);
+  InitDesg desg = { NULL, 0, var };
+  return create_lvar_init(init, var->ty, &desg, tok);
 }
 
 static bool is_typename(Token *tok) {
