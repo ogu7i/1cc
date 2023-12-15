@@ -125,6 +125,7 @@ typedef enum {
   ND_VAR,       // 変数
   ND_NUM,       // 整数
   ND_CAST,      // 型キャスト
+  ND_MEMZERO,   // スタック変数の0初期化
 } NodeKind;
 
 struct Node {

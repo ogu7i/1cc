@@ -203,6 +203,12 @@ static void gen_expr(Node *node) {
       gen_expr(node->lhs);
       cast(node->lhs->ty, node->ty);
       return;
+    case ND_MEMZERO:
+      println("  mov rcx, %d", node->var->ty->size);
+      println("  lea rdi, [rbp-%d]", node->var->offset);
+      println("  mov al, 0");
+      println("  rep stosb");
+      return;
     case ND_COND: {
       int c = count();
       gen_expr(node->cond);
