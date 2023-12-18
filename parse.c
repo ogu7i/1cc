@@ -55,6 +55,7 @@ typedef struct InitDesg InitDesg;
 struct InitDesg {
   InitDesg *next;
   int idx;
+  Member *member;
   Obj *var;
 };
 
@@ -242,6 +243,22 @@ static Initializer *new_initializer(Type *ty, bool is_flexible) {
     init->children = calloc(ty->array_len, sizeof(Initializer *));
     for (int i = 0; i < ty->array_len; i++)
       init->children[i] = new_initializer(ty->base, false);
+
+    return init;
+  }
+
+  if (ty->kind == TY_STRUCT) {
+    // 構造体のメンバを数える
+    int len = 0;
+    for (Member *mem = ty->members; mem; mem = mem->next)
+      len++;
+
+    init->children = calloc(len, sizeof(Initializer *));
+
+    for (Member *mem = ty->members; mem; mem = mem->next)
+      init->children[mem->idx] = new_initializer(mem->ty, false);
+
+    return init;
   }
 
   return init;
@@ -504,18 +521,21 @@ static void resolve_goto_labels(void) {
 static void struct_members(Token **rest, Token *tok, Type *ty) {
   Member head = {};
   Member *cur = &head;
+  int idx = 0;
 
   while (!equal(tok, "}")) {
     Type *base_ty = declspec(&tok, tok, NULL);
-    int i = 0;
+    bool first = true;
 
     while (!consume(&tok, tok, ";")) {
-      if (i++)
+      if (!first)
         tok = skip(tok, ",");
+      first = false;
 
       Member *mem = calloc(1, sizeof(Member));
       mem->ty = declarator(&tok, tok, base_ty);
       mem->name = mem->ty->name;
+      mem->idx = idx++;
       cur = cur->next = mem;
     }
   }
@@ -981,7 +1001,27 @@ static void array_initializer(Token **rest, Token *tok, Initializer *init) {
   }
 }
 
-// initializer = string-initliazer | array-initializer | assign
+// struct-initializer = "{" initializer ("," initializer)* "}"
+static void struct_initializer(Token **rest, Token *tok, Initializer *init) {
+  tok = skip(tok, "{");
+
+  Member *mem = init->ty->members;
+
+  while (!consume(rest, tok, "}")) {
+    if (mem != init->ty->members)
+      tok = skip(tok, ",");
+
+    if (mem) {
+      initializer2(&tok, tok, init->children[mem->idx]);
+      mem = mem->next;
+    } else {
+      tok = skip_excess_element(tok);
+    }
+  }
+}
+
+// initializer = string-initializer | array-initializer
+//             | struct-initializer | assign
 static void initializer2(Token **rest, Token *tok, Initializer *init) {
   if (init->ty->kind == TY_ARRAY && tok->kind == TK_STR) {
     string_initializer(rest, tok, init);
@@ -990,6 +1030,11 @@ static void initializer2(Token **rest, Token *tok, Initializer *init) {
 
   if (init->ty->kind == TY_ARRAY) {
     array_initializer(rest, tok, init);
+    return;
+  }
+
+  if (init->ty->kind == TY_STRUCT) {
+    struct_initializer(rest, tok, init);
     return;
   }
 
@@ -1007,6 +1052,12 @@ static Node *init_desg_expr(InitDesg *desg, Token *tok) {
   if (desg->var)
     return new_var_node(desg->var, tok);
 
+  if (desg->member) {
+    Node *node = new_unary(ND_MEMBER, init_desg_expr(desg->next, tok), tok);
+    node->member = desg->member;
+    return node;
+  }
+
   Node *lhs = init_desg_expr(desg->next, tok);
   Node *rhs = new_num(desg->idx, tok);
   return new_unary(ND_DEREF, new_add(lhs, rhs, tok), tok);
@@ -1020,6 +1071,18 @@ static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token
       Node *rhs = create_lvar_init(init->children[i], ty->base, &desg2, tok);
       node = new_binary(ND_COMMA, node, rhs, tok);
     }
+    return node;
+  }
+
+  if (ty->kind == TY_STRUCT) {
+    Node *node = new_node(ND_NULL_EXPR, tok);
+
+    for (Member *mem = ty->members; mem; mem = mem->next) {
+      InitDesg desg2 = { desg, 0, mem };
+      Node *rhs = create_lvar_init(init->children[mem->idx], mem->ty, &desg2, tok);
+      node = new_binary(ND_COMMA, node, rhs, tok);
+    }
+
     return node;
   }
 
@@ -1041,7 +1104,7 @@ static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token
 // に変換される。
 static Node *lvar_initializer(Token **rest, Token *tok, Obj *var) {
   Initializer *init = initializer(rest, tok, var->ty, &var->ty);
-  InitDesg desg = { NULL, 0, var };
+  InitDesg desg = { NULL, 0, NULL, var };
 
   // 初期化子で指定されてない要素は0初期化する。
   // ここでは、簡単のために変数のメモリ領域全体をあらかじめ

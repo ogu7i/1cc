@@ -230,6 +230,7 @@ struct Member {
   Member *next;
   Type *ty;
   Token *name;
+  int idx;
   int offset;
 };
 
