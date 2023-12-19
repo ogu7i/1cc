@@ -1034,6 +1034,16 @@ static void initializer2(Token **rest, Token *tok, Initializer *init) {
   }
 
   if (init->ty->kind == TY_STRUCT) {
+    // 他の構造体変数で初期化する場合
+    if (!equal(tok, "{")) {
+      Node *expr = assign(rest, tok);
+      add_type(expr);
+      if (expr->ty->kind == TY_STRUCT) {
+        init->expr = expr;
+        return;
+      }
+    }
+    
     struct_initializer(rest, tok, init);
     return;
   }
@@ -1074,7 +1084,7 @@ static Node *create_lvar_init(Initializer *init, Type *ty, InitDesg *desg, Token
     return node;
   }
 
-  if (ty->kind == TY_STRUCT) {
+  if (ty->kind == TY_STRUCT && !init->expr) {
     Node *node = new_node(ND_NULL_EXPR, tok);
 
     for (Member *mem = ty->members; mem; mem = mem->next) {
