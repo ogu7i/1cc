@@ -7,6 +7,7 @@ long g6 = 6;
 int g9[3] = {0, 1, 2};
 struct { char a; int b; } g11[2] = {{1, 2}, {3, 4}};
 struct { int a[2]; } g12[2] = {{{1,2}}};
+union { int a; char b[8]; } g13[2] = {{0x01020304}, {0x05060708}};
 
 int main() {
   ASSERT(1, ({ int x[3]={1,2,3}; x[0]; }));
@@ -90,6 +91,11 @@ int main() {
   ASSERT(2, g12[0].a[1]);
   ASSERT(0, g12[1].a[0]);
   ASSERT(0, g12[1].a[1]);
+
+  ASSERT(4, g13[0].b[0]);
+  ASSERT(3, g13[0].b[1]);
+  ASSERT(8, g13[1].b[0]);
+  ASSERT(7, g13[1].b[1]);
 
   printf("OK\n");
   return 0;

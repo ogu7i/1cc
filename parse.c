@@ -1177,6 +1177,9 @@ static void write_gvar_data(Initializer *init, Type *ty, char *buf, int offset) 
     return;
   }
 
+  if (ty->kind == TY_UNION)
+    write_gvar_data(init->children[0], ty->members->ty, buf, offset);
+
   if (init->expr)
     write_buf(buf + offset, eval(init->expr), ty->size);
 }
