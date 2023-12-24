@@ -16,6 +16,7 @@
 typedef struct Type Type;
 typedef struct Node Node;
 typedef struct Member Member;
+typedef struct Relocation Relocation;
 
 //
 // tokenize.c
@@ -78,12 +79,22 @@ struct Obj {
   bool is_static;     // staticか
   // グローバル変数
   char *init_data;    // 初期化のためのデータ
+  Relocation *rel;
 
   // 関数用
   Obj *params;        // 関数の仮引数
   Node *body;         // 関数のbodyのAST
   Obj *locals;        // ローカル変数
   int stack_size;     // 変数と引数のためのスタックサイズ
+};
+
+// グローバル変数は定数式か他のグローバル変数へのポインタで初期化できる。
+// この構造体は後者をあらわしている。
+struct Relocation {
+  Relocation *next;
+  int offset;
+  char *label;
+  long addend;
 };
 
 typedef enum {
