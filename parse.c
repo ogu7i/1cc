@@ -1104,6 +1104,14 @@ static void initializer2(Token **rest, Token *tok, Initializer *init) {
     return;
   }
 
+  if (equal(tok, "{")) {
+    // スカラ変数の初期化子は大カッコで囲まれていても良い
+    // 例えば、int x = {3};
+    initializer2(&tok, tok->next, init);
+    *rest = skip(tok, "}");
+    return;
+  }
+
   init->expr = assign(rest, tok);
 }
 
